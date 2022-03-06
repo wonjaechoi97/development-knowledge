@@ -6,4 +6,4 @@
 
 ---
 
-## ✂️ [**jQuery**](jQuery/README.md)
+## ✂️ [**jQuery**](jQuery/README.md) - JavaScript **Library**
