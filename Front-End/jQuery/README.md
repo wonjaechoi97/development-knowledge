@@ -5,16 +5,19 @@
 <br>
 
 - 개요
-    - jQuery는 John Resig이 2006년 발표한 크로스플랫폼을 지원하는 경량 javascript library
+    - jQuery는 John Resig이 2006년 발표한 **크로스플랫폼**을 지원하는 경량 **javascript library**
 
     - HTML 문서의 탐색이나 조작, 이벤트 핸들링, 애니메이션, Ajax 등을 멀티 브라우저를 지원하는 API를 통해 간편하게 사용
 
 - 특징
-    - 크로스 플랫폼을 지원하므로 어떠한 브라우저에서나 동일하게 동작
-        > 브라우저 호환성을 고려하여 대체코드를 작성할 필요가 없음
-    - 네이티브 DOM API (DOM Query, Traversing, Manipulation 등) 보다 직관적이고 편리한 API 제공하여 개발 속도를 향상
-    - Event 처리, Ajax, Animation 효과를 쉽게 사용
-    - 다양한 Effect 함수를 제공하여 동적인 페이지를 쉽게 구현
+    - **크로스 플랫폼**을 지원하므로 어떠한 브라우저에서나 **동일하게 동작**
+        > 브라우저 호환성을 고려하여 **대체코드**를 작성할 필요가 없음
+
+    - 네이티브 DOM API (DOM Query, Traversing, Manipulation 등) 보다 **직관적이고 편리한** API 제공하여 개발 속도를 향상
+    - **Event 처리, Ajax, Animation 효과**를 쉽게 사용
+    - 다양한 Effect 함수를 제공하여 **동적인 페이지**를 쉽게 구현
+
+<br>
 
 - 사용 설정 두가지 방법
     ```html
@@ -30,12 +33,13 @@
     ```
 
 - 기본구문
-    - Selector를 사용하여 DOM 객체를 탐색하고, 반환된 래퍼세트를 통해 함수를 수행함
-        > 래퍼세트 객체는 메서드 체인을 제공하여, 메서드 호출에서의 반복적인 코딩을 줄여줌
+    - **Selector를 사용**하여 DOM 객체를 탐색하고, 반환된 래퍼세트를 통해 함수를 수행함
+        > 래퍼세트 객체는 **메서드 체인**을 제공하여, 메서드 호출에서의 **반복적인 코딩**을 줄여줌
+
     - Selector 표현식과 Action 메서드를 조합한 형태로 구문을 작성
-        > `$(selector).action();`
-    - jQuery로 DOM 을 탐색하기 전에, 웹 브라우저에 문서가 모두 로드되어 있어야 함
-    - jQuery는 Document Ready 이후 처리할 수 있는 두 가지 방법을 제공
+        > **`$(selector).action();`**
+    - jQuery로 DOM 을 탐색하기 전에, 웹 브라우저에 **문서가 모두 로드**되어 있어야 함
+    - jQuery는 **Document Ready 이후 처리**할 수 있는 두 가지 방법을 제공
         ```js
             // 1번
             $(document).ready(function() {
@@ -62,20 +66,22 @@
     - DOM (Document Object Model) 은 HTML과 XML 문서의 구조를 정의하고 API 제공
 
     - DOM 객체의 API를 사용하는 단순 js를 이용한 DOM 탐색도 가능하지만, 단순한 작업임에도 많은 코드를 작성해야 함
-    - jQuery는 CSS에서 사용하는 Selector 표현 방식을 사용하여 DOM 탐색
+    - jQuery는 CSS에서 사용하는 **Selector 표현 방식**을 사용하여 DOM 탐색
         - 브라우저가 표준 CSS 선택자를 올바르게 구현하지 않았더라도, jQuery는 W3C 표준에 맞게 요소를 탐색
-        - DOM 탐색 결과롤 래퍼세트 (Wrapper Set) 라는 DOM을 래핑 한 객체를 반환
+
+        - DOM 탐색 결과를 래퍼세트 (Wrapper Set) 라는 DOM을 래핑 한 객체를 반환
 
 - 선택자 (Selector)
     - CSS 문법을 확장하여 selector를 이용한 DOM Element의 검색은 특정 브라우저에 의존적인 스크립팅을 벗어날 수 있음
+
     - jQuery function의 기본 형식
         > $ : jQuery   
           ("h1") : selector   
           .css("color", "blue"); : function
 
-- DOM 요소 탐색 - 요소선택자 (Element Selector)
+- DOM 요소 탐색 - **요소선택자 (Element Selector)**
     - jQuery 선택자는 DOM 객체를 탐색하여 래퍼세트 객체로 반환
-    - jQuery 선택자에는 요소, ID, 클래스, 다중, 복합 그리고 모두 선택자 등이 있음
+    - jQuery 선택자에는 **요소, ID, 클래스, 다중, 복합 그리고 모두 선택자** 등이 있음
         selector 종류|selector 표현방법
         :---|:---
         All selector|$("*")
@@ -90,6 +96,7 @@
 
     - ID selector
         - 특정 id 속성을 가지고 있는 요소를 선택
+
         - 웹 표준에서 id는 html page에서 단 하나의 태그에만 적용
             > 선택자 중 사용빈도 높음
         - 만약 ID가 중복된 경우, 첫 번째 요소를 반환
@@ -98,27 +105,32 @@
 
     - Element selector
         - 특정 element를 선택
+
         - DOM 요소 명(태그 이름)이 일치하는 것들을 모두 찾음
         - DOM API 의 document.getElementsByTagName() 과 같음
 
     - Class selector
         - 특정 class 속성을 가지고 있는 요소를 선택
+
         - DOM API의 document.getElementByClassName() 과 같음
 
     - Complex selector
         - class 속성이 2개인 경우, AND 조건을 표현
+
         - 복합 선택자는 주로 selector + Class selector 조합으로 사용
 
     - Multiple selector
         - 여러 element를 선택
+
         - 선택할 element가 여러 개일 경우 콤마 (,) 로 구분
         - 나열된 선택자를 하나라도 만족하는 DOM 객체를 반환
 
 - DOM 계층구조 탐색 
     - DOM Hierarchy Selector
+
         - jQuery는 HTML DOM 계층 구조에 접근하고 제어하는 쉬운 방법을 제공
 
-        - DOM 요소들은 수평적으로 형제요소, 수직적으로 부모, 자식, 자손, 조상요소로 관계를 구분함
+        - DOM 요소들은 **수평적으로 형제요소**, **수직적으로 부모, 자식, 자손, 조상요소**로 관계를 구분함
             selector 종류|selector 표현방법
             :---|:---
             Child selector|$("parent > child")
@@ -147,26 +159,26 @@
     - 기본 선택자 뒤에 콜론 (:) 기호와 함께 표기
     - jQuery에는 이 외에도 위치 기반 필터 선택자와 함수 기반 필터 선택자가 있음
     
-    필터 선택자|설명
-    :---|:---
-    el:button|type이 button인 input 요소 또는 button 요소 선택
-    el:checkbox|type이 checkbox인 input 요소 선택
-    el:file|type이 file인 input 요소 선택
-    el:image|type이 image인 input 요소 선택
-    el:password|type이 password인 input 요소 선택
-    el:radio|type이 radio인 input 요소 선택
-    el:reset|type이 reset인 input 요소 선택
-    el:submit|type이 submit인 input 요소 선택
-    el:text|type이 text인 input 요소 선택
-    el:checked|체크된 입력 폼 선택
-    el:disabled|비활성화된 입력 폼 선택
-    el:enabled|활성화된 입력 폼 선택
-    el:focus|초점이 맞추어진 입력 폼 선택
-    el:input|모든 입력 폼 선택(input, textarea, select, button ...)
-    el:selected|option 객체 중 선택된 요소 선택
-    el:hidden|감춰진 요소 선택
-    el:visible|보이는 요소 선택
-    el:header|헤더 엘리먼트만 선택 (<\h1> ~ \<h6>)
+        필터 선택자|설명
+        :---|:---
+        el:button|type이 button인 input 요소 또는 button 요소 선택
+        el:checkbox|type이 checkbox인 input 요소 선택
+        el:file|type이 file인 input 요소 선택
+        el:image|type이 image인 input 요소 선택
+        el:password|type이 password인 input 요소 선택
+        el:radio|type이 radio인 input 요소 선택
+        el:reset|type이 reset인 input 요소 선택
+        el:submit|type이 submit인 input 요소 선택
+        el:text|type이 text인 input 요소 선택
+        el:checked|체크된 입력 폼 선택
+        el:disabled|비활성화된 입력 폼 선택
+        el:enabled|활성화된 입력 폼 선택
+        el:focus|초점이 맞추어진 입력 폼 선택
+        el:input|모든 입력 폼 선택(input, textarea, select, button ...)
+        el:selected|option 객체 중 선택된 요소 선택
+        el:hidden|감춰진 요소 선택
+        el:visible|보이는 요소 선택
+        el:header|헤더 엘리먼트만 선택 (<\h1> ~ \<h6>)
 
     - 위치 기반 필터선택자
         - 선택한 요소들의 위치를 기반으로 필터를 수행
@@ -184,18 +196,18 @@
     - 함수 기반 필터선택자
         - jQuery는 함수 형태의 필터 선택자를 제공
 
-        필터 선택자|설명
-        :---|:---
-        :not(filter)|주어진 선택자와 일치하지 않는 모든 요소를 선택
-        :contains(str)|텍스트 str을 포함하는 요소만 선택
-        :nth-child(n)|n번째 자식 요소를 선택
-        :eq(n)|n번째로 일치하는 요소를 선택
-        :gt(n)|n번째(포함x) 이후 요소를 선택
-        :lt(n)|n번째(포함x) 이전 요소를 선택
-        :has(f)|주어진 선택자와 일치하는 하나 이상의 요소를 포함하는 요소를 선택
+            필터 선택자|설명
+            :---|:---
+            :not(filter)|주어진 선택자와 일치하지 않는 모든 요소를 선택
+            :contains(str)|텍스트 str을 포함하는 요소만 선택
+            :nth-child(n)|n번째 자식 요소를 선택
+            :eq(n)|n번째로 일치하는 요소를 선택
+            :gt(n)|n번째(포함x) 이후 요소를 선택
+            :lt(n)|n번째(포함x) 이전 요소를 선택
+            :has(f)|주어진 선택자와 일치하는 하나 이상의 요소를 포함하는 요소를 선택
 
-        > nth-* 계열 필터의 n값은 1부터 시작하는 index 사용   
-            eq와 같은 필터는 n값이 0부터 시작하는 js의 0기반 index 사용   
+            > nth-* 계열 필터의 n값은 1부터 시작하는 index 사용   
+                eq와 같은 필터는 n값이 0부터 시작하는 js의 0기반 index 사용   
 
 - jQuery method 
     - 래퍼세트와 메서드
@@ -211,7 +223,7 @@
             index(element)|인덱스 번호|래퍼세트에서 해당 요소의 인덱스 번호 반환
             add(expr)|래퍼세트|expr으로 명시한 요소를 래퍼세트에 추가
             not(expr)|래퍼 세트|expr으로 명시한 요소를 래퍼세트에서 제거
-            each(function(index, element))|이전 래퍼세트|래퍼세트의 각 요소마다 function을 수행
+            **each(function(index, element))**|이전 래퍼세트|래퍼세트의 각 요소마다 function을 수행
             filter(expr)|래퍼세트|expr에 명시한 요소를 필터링
             slice(begin, end)|래퍼세트|현재 래퍼세트의 일부분으로 새로운 래퍼세트를 생성하여 반환
 
@@ -281,6 +293,7 @@
 
     - 자손 요소 탐색
         - find() 메서드는 래퍼세트의 모든 요소들에 대하여 주어진 선택자를 만족하는 모든 자손 요소를 선택
+
         - find() 메서드는 선택자를 통해 탐색한 DOM 요소들을 새로운 래퍼세트로 반환
             > 래퍼세트의 filter() 메서드는 래퍼세트 요소를 걸러내기 위해 사용   
               But, find() 메서드는 래퍼세트 요소들의 하위 자손들을 탐색하기 위해 사용
@@ -361,6 +374,7 @@
     - DOM 객체 추가
         - html() 메서드는 문자열로 된 HTML을 DOM 객체로 추가
             > 문자열을 이어 붙여서 HTML을 구성하는 작업은 복잡하고 지저분한 코드를 유발
+
         - $() 함수는 선택자를 수행하는 기능 뿐 아니라, DOM 객체를 바로 생성하는 기능 제공
         - 메서드 체인을 사용하면, $() 함수로 DOM 객체를 생성하여 객체 특성을 설정하는 작업을 간편하게 할 수 있음
             > `$();`   
@@ -476,6 +490,7 @@
 - jQuery Event Binding
     - bind() 함수
         - 선택된 DOM 객체의 이벤트에 지정한 핸들러를 연결하는 함수
+
         - 동적으로 생성한 DOM 객체에는 적용 X
             > `bind(eventType, data, listener)`
             >> eventType : 핸들러를 할당할 이벤트 타입의 이름   
@@ -495,16 +510,18 @@
 
     - on() 함수
         - bind() 함수처럼 DOM 객체에 이벤트 핸들러를 연결
+
         - delegate 방식으로 사용 시 동적으로 생성한 DOM 객체에도 적용 가능
         - 1.7.x 버전부터 적용되었고, 이벤트 연결에 가장 기본이 되는 함수로 권장됨
             > `$(selector).on(eventType, delegate selector, function(event) {});`
 
     - off() 함수
         - on() 과 반대로 DOM 객체의 이벤트 제거
+
         - 선택된 DOM 객체의 특정 이벤트 또는 모든 이벤트를 제거
-            > `$(selector).off();`
-            > `$(selector).off(eventType);`
-            > `$(selector).off(eventType,function(event){});`
+            > `$(selector).off();`   
+            > `$(selector).off(eventType);`   
+            > `$(selector).off(eventType,function(event){});`   
 
     - Simple Event Bind
         - jQuery는 DOM 객체에 이벤트를 간단하게 연결할 수 있는 다양한 함수를 제공함
@@ -518,8 +535,8 @@
             .dblclick|.keyup|.mouseleave|.mouseover|.submit
             .error|.load|.ready|.mouseup|.unload
 
-            > `$(selector).on("click", function(event){});`
-            > `$(selector).click(function(event){});`
+            > `$(selector).on("click", function(event){});`   
+            > `$(selector).click(function(event){});`   
 
     - one() 함수
         - 이벤트를 연결하고 한번 실행 후 삭제
@@ -562,6 +579,7 @@
 
 - Input Event
     - 일반적으로 HTML 에서 입력 양식으로 데이터를 전송하는 작업을 많이 함
+
     - 입력 양식에서도 발생하는 이벤트가 존재하고 jQuery에서도 이를 지원함
         이벤트|설명
         :---|:---

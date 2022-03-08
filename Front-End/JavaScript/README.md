@@ -755,7 +755,7 @@
         - 웹스토리지는 origin(프로토콜, 도메인, 포트)이 다르면 접근 불가
 
     - LocalStorage, SessionStorage 기본 구성
-        - 키(key)와 값(value)을 하나의 세트로 저장
+        - **키(key)와 값(value)** 을 하나의 세트로 저장
         - 도메인과 브라우저별로 저장
         - 값은 반드시 문자열로 저장
 
@@ -771,13 +771,13 @@
         function init() {
             // localStorage 데이터 추가 방법 3가지
             localStorage.Test = 'Sample';
-            // localStorage["Test"] = "Sample";
-            // localStorage.setItem("Test", "Sample");
+            localStorage["Test"] = "Sample";
+            localStorage.setItem("Test", "Sample"); // 직관을 위해 사용추천
 
             // localStorage 데이터 취득 방법 3가지
             var val = localStorage.Test;
-            // var val = localStorage["Test"];
-            // var val = localStorage.getItem("Test");
+            var val = localStorage["Test"];
+            var val = localStorage.getItem("Test"); // 직관을 위해 사용추천
 
             // 취득 데이터 출력
             document.querySelector('#result').innerHTML = val;
