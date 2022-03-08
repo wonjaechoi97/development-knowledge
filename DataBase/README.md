@@ -37,6 +37,8 @@
 
 ---
 
+<br>
+
 ## SQL 기본 문법
 
 <br>
@@ -85,11 +87,59 @@
 
 ### 데이터 입력
 - INSERT
-    ```sql
-    INSERT INTO member VALUES('2013', NULL, '홍길동', 9, '서울', '02', '170');
-    ```
+    - 테이블에 데이터를 삽입
+        ```sql
+        INSERT INTO 테이블 [(열1, 열2, ...)] VALUES (값1, 값2, ...);
 
-### 테이블 조회
+        INSERT INTO member VALUES('2013', NULL, '홍길동', 9, '서울', '02', '170');
+        ```
+    - 특정 열은 입력에서 제외 (제외한 행은 NULL 삽입)
+        ```sql
+        INSERT INTO member (mem_id, mem_name) VALUES('22', '홍길동');
+        ```
+    - 입력 순서를 변경
+        ```sql
+        INSERT INTO member (mem_name, mem_id) VALUES('홍길동', '22');
+        ```
+    - 다른 테이블의 데이터를 한 번에 입력
+        ```sql
+        INSERT INTO 테이블 [(열1, 열2, ...)] SELECT 문;
+        ```
+
+- AUTO_INCREMENT
+    - 테이블 생성시 AUTO_INCREMENT로 지정하는 열은 반드시 PRIMARY KEY
+        > 자동 증가하는 부분은 NULL로 지정하면 자동으로 채워짐
+        ```sql
+        INSERT INTO hongong VALUES (NULL, '길동', 25); -- 1
+        INSERT INTO hongong VALUES (NULL, '둘리', 22); -- 2
+        INSERT INTO hongong VALUES (NULL, '똘비', 21); -- 3
+
+        INSERT INTO hongong VALUES (NULL, '길동', 25), (NULL, '둘리', 22), (NULL, '똘비', 21); -- 3줄입력을 1줄로 입력할 수 있음
+        ```
+    - 현재값을 확인하는 SQL
+        ```sql
+        SELECT LAST_INSERT_ID();
+        ```
+    - 시작 값을 변경
+        ```sql
+        ALTER TABLE hongong AUTO_INCREMENT=100;
+        ```
+    - 증가 값을 변경 (시스템 변수)
+        ```sql
+        SET @@auto_increment_increment=3;
+        ```
+        - 전체 시스템 변수의 종류 조회
+            ```sql
+            SHOW GLOBAL VARIABLES
+            ```
+
+### 데이터 조회
+- DESC (Describe)
+    - 테이블의 구조를 조회
+        ```sql
+        DESC 테이블이름
+        ```
+
 - SELECT
     - 테이블에서 원하는 데이터를 추출
         ```sql
@@ -181,23 +231,62 @@
         SELECT mem_id "회원 아이디", SUM(price*amount) "총 구매 개수" FROM buy GROUP BY mem_id HAVINT SUM(price*amount) > 1000;
         ```
 
-<br/>
-
-### 서브쿼리
-- SELECT 안에 또 다른 SELECT가 들어가는 것
-    ```sql
-    SELECT height FROM member WHERE mem_name='홍길동';
-    SELECT mem_name, height FROM member WHERE height > 164;
-    
-    -- 위의 두 쿼리문을 합치면
-    SELECT mem_name, height FROM member 
-        WHERE height > (SELECT height FROM member WHERE mem_name='홍길동');
-    ```
+- 서브쿼리
+    - SELECT 안에 또 다른 SELECT가 들어가는 것
+        ```sql
+        SELECT height FROM member WHERE mem_name='홍길동';
+        SELECT mem_name, height FROM member WHERE height > 164;
+        
+        -- 위의 두 쿼리문을 합치면
+        SELECT mem_name, height FROM member 
+            WHERE height > (SELECT height FROM member WHERE mem_name='홍길동');
+        ```
 
 <br/>
 
-### 
-- 
+### 데이터 수정
+- UPDATE
+    - 기존에 입력되어 있는 값을 수정
+        ```sql
+        UPDATE 테이블이름
+            SET 열1=값1, 열2=값2, ...
+            WHERE 조건;
+
+        UPDATE city_popul
+            SET city_name='서울'
+            WHERE city_name='Seoul';
+        ```
+
+- WHERE 없는 UPDATE
+    - 모든 행에 일괄적으로 수정 적용
+        ```sql
+        UPDATE city_popil
+            SET population = population / 10000;
+        ```
+
+<br/>
+
+### 데이터 삭제
+- DELETE
+    - 행 데이터 삭제
+        ```sql
+        DELETE FROM 테이블이름 WHERE 조건;
+
+        DELETE FROM city_popul WHERE city_name LIKE 'New%' LIMIT 5;
+        ```
+- 대용량 테이블 삭제방법 3가지
+    - DELETE : 가장 오랜 시간이 걸림, 테이블의 구조 유지
+        ```sql
+        DELETE FROM big_table;
+        ```
+    - DROP : 가장 빠름, 테이블 자체를 삭제
+        ```sql
+        DROP TABLE big_table;
+        ```
+    - TRUNCATE : 테이블의 구조는 유지하지만 속도가 매우 빠르나, WHERE절 사용 불가
+        ```sql
+        TRUNCATE TABLE big_table;
+        ```
 
 <br/>
 
@@ -205,5 +294,20 @@
 
 <br>
 
-## 
+## SQL 고급 문법
 
+<br>
+
+### MySQL의 데이터 형식
+- 데이터 형식
+
+<br>
+
+### 두 테이블을 묶는 조인
+- 내부 조인
+
+<br>
+
+### SQL 프로그래밍
+- IF 문
+<br>
