@@ -342,7 +342,8 @@
 
     - 변수의 사용
         ```sql
-        SET @변수이름 = 변수의 값 -- 변수의 선언 및 값 대입
+        DECLARE 변수이름 변수의자료형 -- 스토어드 프로시저에서 변수의 선언
+        SET @변수이름 = 변수의 값 -- 일반 SQL에서 변수의 선언 및 값 대입
         SELECT @변수이름; -- 변수의 값 출력
         ```
         > 변수는 워크벤치를 종료하면 사라지는 임시값
@@ -454,7 +455,118 @@
 
 ### SQL 프로그래밍
 
+- 스토어드 프로시저
+    - SQL에서 프로그래밍 기능이 필요할 때 사용하는 데이터베이스 개체
+        ```sql
+        DELIMITER $$
+        CREATE PROCEDURE 스포어드_프로시저_이름()
+        BEGIN
+            -- SQL 프로그래밍 코딩
+        END $$
+        DELIMITER ;
+
+        CALL 스토어드_프로시저_이름(); -- 스토어드 프로시저 실행
+        ```
+
 - IF 문
+    ```sql
+    IF 조건식 THEN
+        SQL 문장들
+    END IF;
+    ```
+
+- IF ELSE 문
+    ```sql
+    IF 조건식 THEN
+        SQL 문장들
+    ELSE
+        SQL 문장들
+    END IF;
+    ```
+
+- 날짜 관련 함수
+    > CURRENT_DATE(); : 오늘 날짜   
+    > CURRENT_TIMESTAMP(); : 오늘 날짜 및 시간
+    > DATEDIFF(날짜1, 날짜2); : 날짜2부터 날짜1까지 일수로 몇일인지 계산
+
+- CASE 문
+    ```sql
+    CASE
+        WHEN 조건1 THEN
+            SQL 문장들1
+        WHEN 조건2 THEN
+            SQL 문장들2
+        WHEN 조건3 THEN
+            SQL 문장들3
+        ELSE
+            SQL 문장들4
+    END CASE;
+    ```
+
+- WHILE 문
+    ```sql
+    WHILE 조건식 DO
+        SQL 문장들
+    END WHILE;
+    ```
+    - 응용
+        ```sql
+        DROP PROCEDURE IF EXISTS whileProc2;
+        DELIMITER $$
+        CREATE PROCEDURE whileProc2()
+        BEGIN
+            DECLARE i INT;
+            DECLARE hap INT;
+            SET i = 1;
+            SET hap = 0;
+
+            myWhile:
+            WHILE (i <= 100) DO
+                IF (i%4 = 0) THEN
+                    SET i = i + 1;
+                    ITERATE myWhile; -- 지정한 label로 continue
+                END IF;
+                SET hap = hap + i;
+                IF(hap > 1000) THEN
+                    LEAVE myWhile; -- 지정한 label break
+                END IF;
+                SET i = i + 1;
+            END WHILE;
+        END $$
+        DELIMITER ;
+
+        CALL whileProc2();
+        ```
+
+- 동적 SQL
+    > SQL 문은 내용이 고정된 경우가 대부분 이지만, 상황에 따라 내용 변경이 필요할 때 동적 SQL을 사용하여 변경되는 내용을 실시간으로 적용하여 사용할 수 있음
+
+    - PREPARE : SQL문을 실행하지 않고 준비
+        ```sql
+        PREPARE myQuery FROM 'SELECT * FROM member WHERE mem_id = "BLK";
+        ```
+    - EXECUTE : 준비한 SQL 문을 실행
+        ```sql
+        EXECUTE myQuery;
+        ```
+    - DEALLOCATE PREFARE : 준비한 SQL문 해제
+        ```sql
+        DEALLOCATE PREFARE myQuery;
+        ```
     
+    - 응용
+        ```sql
+        SET @curDate = CURRENT_TIMESTAMP();
+
+        PREPARE myQuery FROM 'INSERT INTO gate_table Values(null, ?)';
+        EXECUTE myQuery USING @curDate;
+        DEALLOCATE PREPARE myQuery;
+        ```
 
 <br>
+
+## 테이블과 뷰
+
+<br>
+
+### 테이블
