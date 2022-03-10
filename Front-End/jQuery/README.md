@@ -46,9 +46,15 @@
                 // todo
             });
 
-            // 2번
+            // 2번 권장함
             $(function(){
                 // todo
+            });
+
+            $(document).ready(function () {
+                $('button').click(function () {
+                    $('#p1').css('background', 'orange');
+                });
             });
         ```
 

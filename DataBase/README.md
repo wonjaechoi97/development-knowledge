@@ -301,13 +301,160 @@
 ### MySQL의 데이터 형식
 - 데이터 형식
 
+    - 정수형
+        데이터 형식|바이트|범위
+        :---|:--:|:--:
+        TINYINT|1|-128 ~ 127
+        SMALLINT|2|-32,768 ~ 32,767
+        INT|4|-2,147,483,648 ~ 2,147,483,647
+        BIGINT|8|약 -900경 ~ 900경
+
+        > UNSIGNED : 값의 범위를 0부터 지정하여 2배의 범위를 사용
+
+    - 문자형
+        데이터 형식|바이트
+        :---|:--:
+        CHAR(n)|1~255
+        VARCHAR(n)|1~16,383
+
+    - 대량의 데이터 형식
+        형식|데이터 형식|바이트
+        :--:|:---|:--:
+        TEXT 형식|TEXT|1~65,536
+        &nbsp;|LONGTEXT|1~4,294,967,295
+        BLOB 형식|BLOB|1~65,536
+        &nbsp;|LONGBLOB|1~4,294,967,295
+        > TEXT 형식 : 소설이나 영화 대본과 같은 내용을 저장   
+        > BLOB 형식 : 이미지, 동영상 등의 데이터(이진 데이터)를 저장 
+
+    - 실수형
+        데이터 형식|바이트|설명
+        :---|:--:|:---
+        FLOAT|4|소수점 아래 7자리까지 표현
+        DOUBLE|8|소수점 아래 15자리까지 표현
+
+    - 날짜형
+        데이터 형식|바이트|설명
+        :---|:--:|:---
+        DATE|3|날짜만 저장, YYYY-MM-DD 형식으로 사용
+        TIME|3|시간만 저장, HH:MM:SS 형식으로 사용
+        DATETIME|8|날짜 및 시간을 저장, YYYY-MM-DD HH:MM:SS 형식으로 사용
+
+    - 변수의 사용
+        ```sql
+        SET @변수이름 = 변수의 값 -- 변수의 선언 및 값 대입
+        SELECT @변수이름; -- 변수의 값 출력
+        ```
+        > 변수는 워크벤치를 종료하면 사라지는 임시값
+
+        ``` sql
+            SET @count = 3;
+            SELECT * FROM member ORDER BY height LIMIT @count; -- 문법오류
+
+            -- 해결방법
+            PREPARE mySQL FROM 'SELECT * FROM member ORDER BY height LIMIT ?';
+            EXECUTE mySQL USING @count;
+        ```
+
+    - 데이터 형 변환
+        - 명시적인 변환
+            ```sql
+            CAST ( 값 AS 데이터형식[(길이)] )
+            CONVERT ( 값, 데이터형식[(길이)]  -- 형식은 다르지만 동일한 기능)
+
+            SELECT CAST(AVG(price) AS SIGNED) '평균 가격' FROM buy;
+            -- 또는
+            SELECT CONVERT(AVG(price), SIGNED) '평균 가격' FROM buy;
+            -- 함수 안에 올 수 있는 데이터 형식 : CHAR, SIGNED, UNSIGNED, DATE, TIME, DATETIME
+            ```
+        - 암시적인 변환
+            ```sql
+            SELECT '100' + '200'; -- 300
+            SELECT CONCAT('100', '200'); -- 100200
+            SELECT CONCAT(100, '200'); -- 100200
+            SELECT 100 + '200'; -- 300
+            ```
+
 <br>
 
 ### 두 테이블을 묶는 조인
+
+- 조인
+    - 두 개의 테이블을 서로 묶어서 하나의 결과를 만들어 내는 것
+
 - 내부 조인
+    - 형식
+        ```sql
+        SELECT 열목록
+            FROM 첫 번째 테이블
+                INNER JOIN 두 번쨰 테이블 -- 그냥 JOIN으로 입력 가능
+                ON 조인될 조건
+            [WHERE 검색 조건];
+        ```
+    - 동일한 열 이름이 존재하면 테이블이름을 표기해야함
+        ```sql
+        SELECT *
+            FROM buy
+                INNER JOIN member
+                ON buy.mem_id = member.mem_id -- 테이블이름 함께 표기
+            WHERE buy.mem_id = 'GRL';
+        ```
+    - 테이블이름을 간결하게 표현
+        ```sql
+        SELECT B.mem_id, M.mem_name, B.prod_name, M.addr
+            FROM buy B -- 테이블에 별칭을 붙임
+                INNER JOIN member M
+                ON B.mem_id = M.mem_id
+        ```
+    - 내부 조인은 두 테이블 모두에 있는 내용만 조인됨
+        > 양쪽 중에 한 곳이라도 내용이 있을 때 조인하러면 외부 조인을 사용
+
+- 외부 조인
+    - 두 테이블을 조인할 때 필요한 내용이 한 쪽 테이블에만 있어도 결과를 추출가능
+    - 형식
+        ```sql
+        SELECT 열목록
+            FROM 첫 번째 테이블(LEFT 테이블)
+                <LEFT | RIGHT | FULL> OUTER JOIN 두 번쨰 테이블(RIGHT 테이블)
+                ON 조인될 조건
+            [WHERE 검색 조건];
+        ```
+        > LEFT OUTER JOIN : 왼쪽 테이블의 내용은 모두 출력되어야 한다
+        > RIGHT OUTER FOIN : 오른쪽 테이블의 내용은 모두 출력되어야 한다
+        > FULL OUTER JOIN : 왼쪽이든 오른쪽이든 한쪽에 들어 있는 내용이면 출력되어야 한다
+
+- 기타 조인
+    - 상호 조인
+        - 양쪽 테이블의 모든 행을 조인
+            ```sql
+            SELECT * 
+                FROM buy
+                    CROSS JOIN member;
+            ```
+        - 특징
+            - ON 구문 사용할 수 없음
+            - 주로 테스트를 위해 대용량의 데이터를 생성하는 용도로 사용됨
+                ```sql
+                CREATE TABLE cross_table
+                    SELECT *
+                        FROM sakila.actor
+                            CROSS JOIN world.country;
+                ```
+    - 자체 조인
+        - 하나의 테이블에 서로 다른 별칭을 붙여서 조인
+            ```sql
+            SELECT 열목록
+                FROM 테이블 별칭A
+                    INNER JOIN 테이블 별칭B
+                    ON 조인될 조건
+                [WHERE 검색 조건];
+            ```
 
 <br>
 
 ### SQL 프로그래밍
+
 - IF 문
+    
+
 <br>
