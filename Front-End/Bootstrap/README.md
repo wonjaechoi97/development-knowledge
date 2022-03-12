@@ -77,3 +77,37 @@
 
   - 브라우저 호환성 : Bootstrap은 모든 최신 브라우저와 호환됨
 
+- 사용
+
+  - Bootstrap CDN
+    ```html
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    ```
+
+- .container
+
+  - .container 클래스는 반응형 고정 너비 컨테이너를 제공
+
+  - .container-fluid 클래스는 뷰포트의 전체 너비에 걸쳐 있는 전체 너비 컨테이너를 제공
+
+- Grid System
+
+  - 부트 스트랩의 그리드 시스템은 플랙스 박스로 구축되어 페이지에 최대 12개의 열을 허용
+
+  - 12개 열을 모두 개벽적으로 사용하지 않으면 열을 함께 그룹화하여 더 넓은 열을 만들 수 있음
+
+  - Grid Class
+
+    - 클래스를 결합하여 보다 동적이고 유연한 레이아웃을 만들 수 있음
+
+    | class       | device      | 설명(screen width 대비) |
+    | :---------- | :---------- | :---------------------- |
+    | .col-num    | extra small | <576px                  |
+    | .col-sm-num | small       | >=576px                 |
+    | .col-md-num | medium      | >=768px                 |
+    | .col-lg-num | large       | >=992px                 |
+    | .col-xlnum  | extra large | >=1200px                |
