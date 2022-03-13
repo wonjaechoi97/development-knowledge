@@ -104,10 +104,10 @@
 
     - 클래스를 결합하여 보다 동적이고 유연한 레이아웃을 만들 수 있음
 
-    | class       | device      | 설명(screen width 대비) |
-    | :---------- | :---------- | :---------------------- |
-    | .col-num    | extra small | <576px                  |
-    | .col-sm-num | small       | >=576px                 |
-    | .col-md-num | medium      | >=768px                 |
-    | .col-lg-num | large       | >=992px                 |
-    | .col-xlnum  | extra large | >=1200px                |
+      | class       | device      | 설명(screen width 대비) |
+      | :---------- | :---------- | :---------------------- |
+      | .col-num    | extra small | <576px                  |
+      | .col-sm-num | small       | >=576px                 |
+      | .col-md-num | medium      | >=768px                 |
+      | .col-lg-num | large       | >=992px                 |
+      | .col-xlnum  | extra large | >=1200px                |
