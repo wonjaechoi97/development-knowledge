@@ -565,8 +565,332 @@
 
 <br>
 
+---
+
+<br>
+
 ## 테이블과 뷰
 
 <br>
 
 ### 테이블
+
+- 개요
+  - 테이블 : 표 형태로 구성된 2차원 구조로써 행과 열로 구성됨
+
+  - 행 : row 또는 record로 불림
+  - 열 : column 또는 field로 불림
+
+- SQL로 테이블 생성
+  - DB 생성
+    ```sql
+    DROP DATABASE IF EXISTS db_name;
+    CREATE DATABASE db_name;
+    ```
+
+  - 테이블 생성
+    ```sql
+    USE db_name;
+    DROP TABLE IF EXISTS member;
+    CREATE TABLE member
+    (
+        mem_id      CHAR(8) NOT NULL PRIMARY KEY,
+        mem_name    VARCHAR(10) NOT NULL,
+        mem_number  TINYINT NOT NULL,
+        addr        CHAR(2) NOT NULL,
+        phone       CHAR(8) NULL,
+        height      TINYINT UNSIGNED NULL,
+    );
+    ```
+  - 외래키로 연결되는 테이블 생성
+    ```sql
+    DROP TABLE IF EXISTS buy;
+    CREATE TABLE buy
+    (
+        num INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        mem_id CHAR(8) NOT NULL,
+        price INT UNSIGNED NOT NULL,
+        amount SMALLINT UNSIGNED NOT NULL,
+        FOREIGN KEY(mem_id) REFERENCES member(mem_id) -- 외래키지정
+    )
+    ```
+  - 데이터 입력하기
+    ```sql
+    INSERT INTO 테이블 [(열1, 열2, ...)] VALUES (값1, 값2, ...);
+    ```
+
+<br>
+
+### 제약조건
+
+<br>
+
+- 개요
+  - 제약조건 : 데이터의 무결성을 지키기 위해 제한하는 조건
+    > 데이터의 무결성 : 데이터에 결함이 없음   
+    > 아이디가 중복될 경우 여러 문제를 야기하는데, 이를 데이터의 결함이라 함
+
+  - 제약조건의 종류|
+    :---|
+    PRIMARY KEY|
+    FOREIGN KEY|
+    UNIQUE|
+    CHECK|
+    DEFAULT|
+    NULL|
+
+  - 기본키 제약조건
+    - 테이블의 많은 행 데이터 중 데이터를 구분할 수 있는 식별자로써 기본키에 입력되는 값은 중복될 수 없으며, NULL 값이 입력될 수 없음
+
+    - 기본키로 생성시 자동으로 클러스터형 인덱스가 생성됨
+    - 각 테이블은 기본키를 1개만 가질 수 있음
+    - 테이블 삭제시 외래 키 테이블 삭제 후 기본 키 테이블 삭제해야함
+    - 설정 방법
+        ```sql
+        -- 첫번째 방법
+        CREATE TABLE member
+        (
+            mem_id      CHAR(8) NOT NULL PRIMARY KEY,
+            phone       CHAR(8) NULL
+        );
+
+        -- 두번째 방법
+        CREATE TABLE member
+        (
+            mem_id      CHAR(8) NOT NULL,
+            phone       CHAR(8) NULL,
+            PRIMARY KEY(mem_id)
+        );
+
+        -- 세번째 방법
+        CREATE TABLE member
+        (
+            mem_id      CHAR(8) NOT NULL,
+            phone       CHAR(8) NULL
+        );
+        ALTER TABLE member
+            ADD CONSTRAINT
+            PRIMARY KEY (mem_id);
+
+        -- 기본키에 이름 지정
+        CREATE TABLE member
+        (
+            mem_id      CHAR(8) NOT NULL,
+            phone       CHAR(8) NULL,
+            CONSTRAINT PRIMARY KEY PK_member_mem_id (mem_id)
+        );
+        ```
+
+  - 외래키 제약조건
+    - 두 테이블 사이의 관계를 연결해주고, 그 결과 데이터의 무결성을 보장해주는 역할
+
+    - 기본키가 있는 테이블을 기준 테이블, 외래 키가 있는 테이블을 참조 테이블이라 부름
+    - 참조 테이블이 참조하는 기준 테이블의 열은 반드시 기본키나 고유키로 설정되어 있어야 함
+    - 설정 방법
+        ```sql
+        CREATE TABLE member
+        (
+            mem_id      CHAR(8) NOT NULL PRIMARY KEY,
+            phone       CHAR(8) NULL
+        );
+
+        -- 첫번째 방법
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL,
+            FOREIGN  KEY(user_id) REFERENCES member(mem_id)
+        );
+
+        -- 두번째 방법
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL
+        );
+        ALTER TABLE buy
+            ADD CONSTRAINT
+            FOREIGN KEY(user_id)
+            REFERENCES member(mem_id);
+        ```
+    - 기본키-외래키로 맺어진 후엔 기준 테이블의 열 이름이 변경되지 않음
+    - 기준 테이블의 열 이름을 변경하거나 삭제할때 참조 테이블도 자등으로 변경되도록 설정
+        ```sql
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL
+        );
+        ALTER TABLE buy
+            ADD CONSTRAINT
+            FOREIGN KEY(user_id)
+            REFERENCES member(mem_id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE;
+        ```
+
+  - 고유키 제약조건
+    - 중복되지 않는 유일한 값을 입력해야 하는 조건
+    - NULL 입력을 허용함
+        ```sql
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL,
+            email CHAR(30) NULL UNIQUE
+        );
+        ```
+
+  - 체크 제약조건
+    - 입력되는 데이터를 점검하는 기능
+        ```sql
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL,
+            height   TINYINT UNSIGNED NULL CHECK (height >= 100),
+            phone    CHAR(3) NULL
+        );
+
+        ALTER TABLE buy
+            ADD CONSTRAINT
+            CHECK (phone IN ('02', '031', '032', '054', '055', '061' ));
+        ```
+
+  - 기본값 정의
+    - 값을 입력하지 않았을 때 자동으로 입력될 값을 미리 지정
+        ```sql
+        CREATE TABLE buy
+        (
+            num      INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            user_id  CHAR(8) NOT NULL,
+            height   TINYINT UNSIGNED NULL DEFAULT 160,
+            phone    CHAR(3) NULL
+        );
+
+        ALTER TABLE buy
+            ALTER COLUMN phone SET DEFAULT '02';
+
+        INSERT INTO buy VALUES(NULL, '홍길동', default, default);
+        ```
+
+<br>
+
+### 뷰 : 가상의 테이블
+
+<br>
+
+- 개요
+  - 데이터베이스 개체 중 하나로써 SELECT 문이 뷰의 실체임
+
+    ```sql
+    -- 생성
+    CREATE VIEW 뷰이름
+    AS
+        SELECT 문;
+    
+    CREATE VIEW v_member
+    AS
+        SELECT mem_id, mem_name, addr FROM member;
+
+    -- 사용
+    SELECT 열이름 FROM 뷰이름 [WHERE 조건];
+    
+    SELECT * FROM v_member;
+    ```
+
+  - 뷰를 사용하는 이유
+    - 사용자 권한에 따라 접근 가능한 테이블 정보에 차별을 두어 보안강화
+
+    - 자주사용하는 복잡한 SQL을 뷰로 생성하여 단순화
+
+- 실제 작동
+  - 생성, 수정, 삭제
+    - 별칭 사용 가능하며 중간에 띄어쓰기 사용이 가능
+
+    - 작은 따옴표, 큰 따옴표 둘다 사용가능하며, 형식상 AS를 사용하여 코드를 명확히 함
+    - 뷰 조회시 열 이름에 공백이 있으면 백틱으로 묶어줘야 함
+    ```sql
+    -- 생성
+    CREATE VIEW v_viewtest
+    AS
+        SELECT B.mem_id 'M ID', M.mem_name AS 'M Name', B.prod_name "P Name", CONCAT(M.phone1, M.phone2) AS "Office Phone"
+            FROM buy B
+                INNER JOIN member M
+                ON B.mem_id = M.mem_id;
+    
+    SELECT DISTINCT `M ID`, `M Name` FROM v_viewtest;
+
+    -- 수정
+    ALTER VIEW v_viewtest
+    AS
+        SELECT B.mem_id 'M_ID', M.mem_name AS 'M_Name', B.prod_name "P_Name", CONCAT(M.phone1, M.phone2) AS "Phone"
+            FROM buy B
+                INNER JOIN member M
+                ON B.mem_id = M.mem_id;
+    
+    SELECT DISTINCT M_ID, M_Name FROM v_viewtest;
+
+    -- 삭제
+    DROP VIEW v_viewtest;
+    ```
+
+  - 데이터베이스 개체의 생성, 수정, 삭제
+
+    -  모든 데이터베이스 개체(테이블, 뷰, 인덱스, 스토어드 프로시저, 스토어드 함수, 트리거 등)를 생성
+        ```sql
+        CREATE 개체_종류
+        ```
+    - 수정
+        ```sql
+        ALTER 개체_종류
+        ```
+    - 삭제
+        ```sql
+        DROP 개체_종류
+        ```
+
+  - 뷰의 정보 확인
+    ```sql
+    CREATE VIEW            -- 같은 이름의 뷰가 존재하면 오류가 발생   
+    CREATE OR REPLACE VIEW -- 기존 뷰가 있어도 덮어쓰기하여 오류가 발생하지 않음
+    ```
+
+    - 기존 뷰의 정보 확인 : 뷰에서 PRIMARY KEY 등의 정보는 확인불가
+        ```sql
+        DESCRIBE v_viewtest;
+        DESC v_viewtest;
+
+        DESCRIBE member; -- PRIMARY KEY 등의 정보도 조회됨
+
+        SHOW CREATE VIEW; -- 뷰의 소스코드 확인
+        ```
+
+  - 뷰를 통한 데이터의 수정, 삭제
+    ```sql
+    -- 수정
+    UPDATE v_member SET addr = '부산' WHERE mem_id = 'BLK';
+    ```
+    - 뷰가 참조하는 테이블의 열 중에서 NOT NULL로 설정된 열을 모두 포함하지 않으면 입력불가능
+
+    - 뷰에 설정된 값의 범위를 벗어나는 값을 입력되지 않도록 하는 명령어
+        ``` sql
+        ALTER VIEW v_height167
+        AS
+            SELECT * FROM member WHERE height >= 167
+                    WITH CHECK OPTION;
+        ```
+
+  - 단순 뷰와 복합 뷰
+    - 단순 뷰 : 하나의 테이블로 만든 뷰
+    - 복합 뷰 : 두 개 이상의 테이블로 만든 뷰
+      > 주로 두 테이블을 조인한 결과를 사용   
+      > 복합 뷰는 읽기 전용이므로, 데이터 입력, 수정, 삭제할 수 없음
+
+  - 테이블은 뷰가 참조하고 있어도 삭제되고, 이후 뷰를 조회하면 에러코드발생
+      
+<br>
+
+### 인덱스
+
+<br>
