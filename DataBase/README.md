@@ -891,6 +891,283 @@
       
 <br>
 
-### 인덱스
+---
 
 <br>
+
+## 인덱스
+
+<br>
+
+- 개요
+  - 데이터를 빠르게 찾을 수 있도록 도와주는 도구로써, 현실적으로 실무에서 인덱스 없이 DB운영이 불가능
+
+  - 클러스터형 인덱스와 보조 인덱스로 나뉨
+    > 클러스터형 인덱스 : 기본키로 지정하면 자동 생성되며 테이블당 1개만 만들 수 있고 지정한 열을 기준으로 자동 정렬됨   
+    > 보조 인덱스 : 고유 키로 지정하면 자동 생성되며 여러 개를 만들 수도 있지만 자동 정렬되지 않음
+
+  - 인덱스 조회
+    ```sql
+    SHOW INDEX FROM tableName;
+    ```
+
+- 인덱스의 내부 작동
+  - 클러스터형 인덱스와 보조 인덱스는 모두 내부적으로 균형 트리로 만들어짐
+  - 인덱스를 구성하면 데이터 변경 작업(INSERT, UPDATE, DELETE)시 페이지 분할 작업으로 인해 성능이 나빠짐
+
+- 인덱스의 실제 사용
+  - 인덱스 생성
+    ```sql
+    CREATE [UNIQUE] INDEX indexName
+        ON tableName (rowName) [ASC | DESC]
+    ```
+
+  - 인덱스 제거
+    ```sql
+    DROP INDEX indexName ON tableName
+    ```
+
+  - 보조 인덱스 생성
+    ```sql
+    CREATE INDEX idx_member_addr
+        ON member (addr);
+
+    -- 생성 후 실제로 적용 시키려면 테이블을 분석/처리 해주어야 한다
+    ANALYZE TABLE member;
+    SHOW TABLE STATUS LIKE 'member';
+    ```
+
+  - 고유 보조 인덱스 생성
+    ```sql
+    CREATE UNIQUE INDEX idx_member_mem_name
+        ON member (mem_name);
+
+    -- 생성 후 실제로 적용 시키려면 테이블을 분석/처리 해주어야 한다
+    ANALYZE TABLE member;
+    SHOW TABLE STATUS LIKE 'member';
+    ```
+<br>
+
+---
+
+<br>
+
+## 스토어드 프로시저
+
+<br>
+
+### 스토어드 프로시저 사용
+
+- 개요
+  - SQL에 프로그래밍을 추가하여 일반 프로그래밍 언어와 비슷한 효과를 낼 수 있음
+
+  - 쿼리문의 집합으로 볼 수 있으며 어떠한 동작을 일괄 처리하기 위한 용도
+  - DB의 개체 중 한 가지로써 테이블처럼 각 DB내부에 저장됨
+
+- 형식
+  ```sql
+  DELIMITER $$
+  CREATE PROCEDURE Nnme_proc (IN 또는 OUT 매개변수)
+  BEGIN
+    SQL CODES
+  END $$
+  DELIMITER ;
+
+  CALL name_proc();
+
+  DROP PROCEDURE name_proc;
+  ```
+
+- 매개변수의 사용
+  ```sql
+  IN 입력매개변수이름 데이터형식
+  CALL 프로시저이름(전달값);
+
+  DELIMITER $$
+  CREATE PROCEDURE user_proc (
+      IN userNumber INT,
+      IN userHeight INT   )
+  BEGIN
+    SELECT * FROM member
+      WHERE mem_number > userNumber AND height > userHeight;
+  END $$
+  DELIMITER ;
+
+  CALL user_proc(6, 165);
+
+
+
+  OUT 출력매개변수이름 데이터형식
+  CALL 프로시저이름(@변수명);
+  SELECT @변수명;
+
+  DELIMITER $$
+  CREATE PROCEDURE user_proc2 (
+      IN txtValue CHAR(10),
+      OUT outValue INT   )
+  BEGIN
+    INSERT INTO noTable VALUES(NULL, txtValue);
+    SELECT MAX(id) INTO outValue FROM noTable;
+  END $$
+  DELIMITER ;
+
+  CREATE TABLE IF NOT EXISTS noTable(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    txt CHAR(10)
+  );
+
+  CALL user_proc2('테스트1', @myValue);
+  SELECT CONCAT('입력된 ID 값 = ', @myValue);
+
+  ```
+
+- 동적 SQL
+  ```sql
+  DROP PROCEDURE IF EXISTS dynamic_proc
+  DELIMITER $$
+  CREATE PROCEDURE dynamic_proc(
+    IN tableName VARCHAR(20)
+  )
+  BEGIN
+    SET @sqlQuery = CONCAT('SELECT * FROM ', tableName);
+    PREPARE myQuery FROM @sqlQuery;
+    EXECUTE myQuery;
+    DEALLOCATE PREPARE myQuery;
+  END $$
+  DELIMITER ;
+
+  CALL dynamic_proc('member');
+
+  ```
+
+<br>
+
+### 스토어드 함수와 커서
+
+<br>
+
+- 개요
+  - 스토어드 함수란 MySQL에서 제공하는 내장 함수 외에 직접 함수를 만드는 기능
+  - 커서란 스토어드 프로시저 안에서 한 행씩 처리할 때 사용하는 프로그래밍 방식
+
+- 스토어드 함수
+  - 원형
+    ```sql
+    SET GLOBAL log_bin_trust_function_creators = 1; -- 스토어드 함수 생성 권한 허용
+
+    DELIMITER $$
+    CREATE FUNCTION 스토어드함수이름(매개변수)
+        RETURNS 반환형식
+    BEGIN
+        SQL COEDS
+        RETURN 반환값;
+    END $$
+    DELIMITER ;
+
+    SELECT 스토어드함수이름();
+    ```
+
+- 커서
+  - 테이블에서 한 행씩 처리하기 위한 방식
+  - 작동 순서
+    > 커서선언 -> 반복조건선건 -> 커서열기 -> 데이터가져오기 -> 데이터처리하기 -> 커서닫기
+  
+  - 통합 코드
+    ```sql
+    DROP PROCEDURE IF EXISTS cursor_proc;
+    DELIMITER $$
+    CREATE PROCEDURE cursor_proc()
+    BEGIN
+        -- 사용할 변수 준비
+        DECLARE memNumber INT;
+        DECLARE cnt INT DEFAULT 0;
+        DECLARE totNumber INT DEFAULT 0;
+        DECLARE endOfRow BOOLEAN DEFAULT FALSE;
+
+        -- 커서 선언
+        DECLARE memberCursor CURSOR FOR
+            SELECT mem_number FROM member;
+
+        -- 반복 조건 선언
+        DECLARE CONTINUE HANDLER
+            FOR NOT FOUND SET endOfRow = TRUE;
+
+        -- 커서 열기
+        OPEN memberCursor;
+
+        -- 행 반복하기
+        cursor_loop : LOOP
+            FETCH memberCursor INTO memNumber;
+
+            IF endOfRow THEN
+                LEAVE cursor_loop;
+            END IF;
+
+            SET cnt = cnt + 1;
+            SET totNumber = totNumber + memNumber;
+        END LOOP cursor_loop;
+
+        SELECT (totNumber/cnt) AS '회원의 평균 인원 수';
+
+        -- 커서 닫기
+        CLOSE memberCursor;
+    END $$
+    DELIMITER ;
+
+    CALL cursor_proc();
+    ```
+
+<br>
+
+### 트리거
+
+<br>
+
+- 개요
+  - DML(INSERT, UPDATE, DELETE) 문의 이벤트가 발생할 때 자동으로 실행되는 프로그래밍 기능
+  - 자동으로 수행하여 사용자가 추가 작업을 잊어버리는 실수를 방지
+
+- 원형
+    ```sql
+    DROP TRIGGER IF EXISTS myTrigger;
+    DELIMITER $$
+    CREATE TRIGGER myTrigger
+        AFTER DELETE
+        ON trigger_table
+        FOR EACH ROW
+    BEGIN
+        SET @msg = '가수 그룹이 삭제됨';
+    END $$
+    DELIMITER ;
+    ```
+
+- 활용
+  - 테이블에 입력/수정/삭제되는 정보를 백업하는 용도로 활용
+
+    ```sql
+    -- 테이블 복사시 기본 키 등의 설정은 복사되지 않음
+    CREATE TABLE singer (SELECT mem_id, mem_name, mem_number, addr FROM member);
+    
+    CREATE TABLE backup_singer
+    (
+        mem_id CHAR(8) NOT NULL,
+        mem_name VARCHAR(10) NOT NULL,
+        mem_number INT NOT NULL,
+        addr CHAR(2) NOT NULL,
+        modType CHAR(2),
+        modDate DATE,
+        modUser VARCHAR(30)
+    );
+
+    DROP TRIGGER IF EXISTS singer_updateTrg;
+    DELIMITER $$
+    CREATE TRIGGER singer_updateTrg
+        AFTER UPDATE -- 변경 후에 작동하도록 지정
+        ON singer -- 트리거를 부착할 테이블
+        FOR EACH ROW
+    BEGIN
+        INSERT INTO backup_singer VALUES(OLD.mem_id, OLD.mem_name, OLD.mem_number, OLD.addr, '수정', CURDATE(), CURRENT_USER());
+    END $$
+    DELIMITER ;
+    ```
+    > OLD 테이블은 UPDATE, DELETE가 수행될 때, 변경되기 전의 데이터가 잠깐 저장되는 임시 테이블
