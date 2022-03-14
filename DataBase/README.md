@@ -17,12 +17,30 @@
 - 계층형, 망형, **관계형**, 객체지향형, 객체관계형 등으로 분류됨
 
 - **관계형** : 대부분의 DBMS에서 사용되는 형태, **RDBMS**라고 부름
-    > **테이블**이라는 최소단위로 구성되며, 하나이상의 **행(row)** 과 **열(column)** 로 이루어져 있음
+    > **테이블**이라는 최소단위로 구성되며, 하나이상의 **행(row)** 과 **열(column)** 로 이루어져 있음   
+    > 여러 테이블에 분산되어 있는 데이터를 검색 시 테이블 간의 관계(join)을 이용하여 필요한 데이터 검색   
+    > 중복 데이터를 최소화 시킴
+    >> 같은 데이터가 여러 컬럼 또는 테이블에 존재할 경우 정규화를 통해 해결
 
 <br/>
 
 ### SQL
 - 데이터베이스를 **조작**하는 언어
+    종류|문장|설명
+    :---|:---|:---
+    DML(Data Manipulation Language)|INSERT|DB 객체에 데이터를 입력
+    &nbsp;|UPDATE|DB 객체에 데이터를 수정
+    &nbsp;|DELETE|DB 객체에 데이터를 삭제
+    &nbsp;|SELECT|DB 객체에서 데이터를 조회
+    DDL(Data Definition Language)|CREATE|DB 객체를 생성
+    &nbsp;|ALTER|기존에 존재하는 DB 객체를 수정
+    &nbsp;|DROP|DB 객체를 삭제
+    &nbsp;|RENAME|
+    DCL(Data Control Language)|GRANT|DB 객체에 권한을 부여
+    &nbsp;|REVOKE|DB 객체 권한 취소
+    TCL(Transaction Control Language)|COMMIT|실행한 Query 최종 적용
+    &nbsp;|ROLLBACK|실행한 Query를 마지막 COMMIT 전으로 취소하여 데이터 복구
+
 
 - 국제표준화기구에서 **표준 SQL**을 발표
     > 각 회사의 DBMS는 표준 SQL을 준수하되, 제품의 특성을 반영한 SQL을 사용함
@@ -50,6 +68,15 @@
     - DB 생성
         ```sql
         CREATE DATABASE DB이름
+
+        -- 다국어 처리(utf8mb3) 생성
+        CREATE DATABASE dbtest DEFAULT CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci;
+        -- 이모지 문자까지 처리
+        CREATE DATABASE dbtest DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+        ```
+    - DB 변경
+        ```sql
+        ALTER DATABASE dbtest DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
         ```
     - DB이름과 같은 DB를 삭제
         ```sql
@@ -178,6 +205,15 @@
         ```sql
         SELECT * FROM member WHERE mem_name LIKE '김%'  -- 첫글자가 김인 이름
         SELECT * FROM member WHERE mem_name LIKE '__환' -- 마지막 글자가 환인 이름
+        ```
+    - CASE 문 사용
+        ```sql
+        SELECT employee_id, first_name,
+            CASE WHEN salary > 15000 THEN '고액연봉'
+                 WHEN salary > 8000 THEN '평균연봉'
+                 ELSE '저액연봉'
+            END "연봉등급"
+        FROM employees;
         ```
     - 중복된 결과를 제거
         ```sql
