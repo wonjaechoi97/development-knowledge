@@ -269,6 +269,7 @@
 
 - 서브쿼리
     - SELECT 안에 또 다른 SELECT가 들어가는 것
+    - 서브 쿼리는 비교 연산자의 오른쪽에 기술해야 하고 반드시 괄호로 감싸져 있어야 함
         ```sql
         SELECT height FROM member WHERE mem_name='홍길동';
         SELECT mem_name, height FROM member WHERE height > 164;
@@ -277,6 +278,12 @@
         SELECT mem_name, height FROM member 
             WHERE height > (SELECT height FROM member WHERE mem_name='홍길동');
         ```
+    - 중첩 서브 쿼리 : WHERE 문에 작성하는 서브 쿼리
+      - 단일 행
+      - 복수(다중) 행
+      - 다중 컬럼
+    - 인라인 뷰 : FROM 문에 작성하는 서브 쿼리
+    - 스칼라 서브 쿼리 : SELECT 문에 작성하는 서브 쿼리
 
 <br/>
 
@@ -418,14 +425,22 @@
 
 - 조인
     - 두 개의 테이블을 서로 묶어서 하나의 결과를 만들어 내는 것
+    - 어느 테이블을 먼저 읽지를 경정함에 따라 처리할 작업량이 상당히 달라짐
 
 - 내부 조인
+    - 옵티마이저가 조인의 순서를 조절하여 최적화를 수행함
     - 형식
         ```sql
         SELECT 열목록
             FROM 첫 번째 테이블
                 INNER JOIN 두 번쨰 테이블 -- 그냥 JOIN으로 입력 가능
                 ON 조인될 조건
+            [WHERE 검색 조건];
+
+        SELECT 열목록
+            FROM 첫 번째 테이블
+                INNER JOIN 두 번쨰 테이블 -- 그냥 JOIN으로 입력 가능
+                USING 공통열
             [WHERE 검색 조건];
         ```
     - 동일한 열 이름이 존재하면 테이블이름을 표기해야함
@@ -448,12 +463,19 @@
 
 - 외부 조인
     - 두 테이블을 조인할 때 필요한 내용이 한 쪽 테이블에만 있어도 결과를 추출가능
+    - 반드시 OUTER 테이블을 먼저 읽어야 하므로 옵티마이저가 조인 순서를 선택할 수 없음
     - 형식
         ```sql
         SELECT 열목록
             FROM 첫 번째 테이블(LEFT 테이블)
                 <LEFT | RIGHT | FULL> OUTER JOIN 두 번쨰 테이블(RIGHT 테이블)
                 ON 조인될 조건
+            [WHERE 검색 조건];
+
+        SELECT 열목록
+            FROM 첫 번째 테이블(LEFT 테이블)
+                <LEFT | RIGHT | FULL> OUTER JOIN 두 번쨰 테이블(RIGHT 테이블)
+                USING 공통열
             [WHERE 검색 조건];
         ```
         > LEFT OUTER JOIN : 왼쪽 테이블의 내용은 모두 출력되어야 한다
