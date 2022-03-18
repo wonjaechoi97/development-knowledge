@@ -35,7 +35,7 @@
     DDL(Data Definition Language)|CREATE|DB 객체를 생성
     &nbsp;|ALTER|기존에 존재하는 DB 객체를 수정
     &nbsp;|DROP|DB 객체를 삭제
-    &nbsp;|RENAME|
+    &nbsp;|RENAME|테이블의 이름을 변경
     DCL(Data Control Language)|GRANT|DB 객체에 권한을 부여
     &nbsp;|REVOKE|DB 객체 권한 취소
     TCL(Transaction Control Language)|COMMIT|실행한 Query 최종 적용
