@@ -15,6 +15,18 @@
     - [주석 (Comment)](#주석-comment)
   - [JSP 지시자 (Directive)](#jsp-지시자-directive)
   - [JSP 기본객체](#jsp-기본객체)
+  - [Model1](#model1)
+  - [Model2 MVC Pattern(Model-View-Controller)](#model2-mvc-patternmodel-view-controller)
+  - [Cookie와 HttpSession](#cookie와-httpsession)
+    - [http protocol](#http-protocol)
+    - [Cookie](#cookie)
+    - [HttpSession](#httpsession)
+  - [EL (Expression Language)](#el-expression-language)
+    - [EL 개요](#el-개요)
+    - [EL 문법](#el-문법)
+    - [EL 내장객체](#el-내장객체)
+  - [JSTL (Jsp Standard Tag Library)](#jstl-jsp-standard-tag-library)
+  - [](#)
   - [](#)
   - [](#)
 
@@ -24,7 +36,7 @@
 
 ## Web Architecture
 <br>
-<img src="img/../imgs/WebArchitecture.png">
+<img src="imgs/WebArchitecture.png">
 
 <br>
 
@@ -330,4 +342,378 @@ public class HelloServlet extend HttpServlet {
 
   ---
 
-## 
+## Model1
+
+- model1은 view와 logic을 JSP 페이지 하나에서 처리하는 구조
+
+- 요청이 들어오면 JSP 페이지는 java beans 나 별도의 service class를 이용하여 작업을 처리, 결과를 client에 출력
+
+- View와 Controller를 JSP가 담당하고 Model을 Java Beans가 담당
+
+- 장단점
+  장점|단점
+  :--|:--
+  구조가 단순하며 직관적이라 배우기 쉬움|출력을 위한 view(html)코드와 로직 처리를 위한 java 코드가 섞여 있기 때문에 JSP 코드 자체가 복잡해짐
+  개발 시간이 비교적 짧기 때문에 개발 비용 감소|JSP 코드에 Back-End(Developer)와 Front-End(Designer)가 혼재되기 때문에 분업이 힘듬
+  &nbsp;|project의 규모가 커지면 코드가 복잡해지므로 유지보수에 어려움
+  &nbsp;|확장성이 나쁨
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## Model2 MVC Pattern(Model-View-Controller)
+<br>
+
+<img src="imgs/Model2_Architecture.png">
+
+<br>
+
+- MVC(Model-View-Controller) pattern을 웹 개발에 도입한 구조
+
+- client 요청에 대한 처리는 servlet이, logic처리는 java class(Service, Dao, ..), client에게 출력하는 response page를 JSP가 담당
+
+  Model2|MVC Pattern|설명
+  :--|:--|:--
+  Service, Dao or Java Beanse|Model|Logic(Business & DB Logic)을 처리하는 모든 것<br>controller로 부터 넘어온 data를 이용하여 이를 수행하고 그에 대한 결과를 다시 contoller에 return
+  JSP|View|모든 화면 처리를 담당<br>Client의 요청에 대한 결과 뿐 아니라 controller에 요청을 보내는 화면단도 jsp에서 처리<br>로직 처리를 위한 java code는 사라지고 결과 출력을 위한 code만 존재
+  Servlet|Controller|Client의 요청을 분석하여 로직 처리를 위한 Model단을 호출<br>return 받은 결과 데이터를 필요에 따라 request, session등에 저장하고, redirect 또는 forward 방식으로 jsp(view) page를 이용하여 출력
+
+- 장단점
+  장점|단점
+  :--|:--
+  출력을 위한 view(html) 코드와 로직 처리를 위한 java 코드가 분리|구조가 복잡하여 초기 진입이 어려움
+  화면단과 로직단이 분리되어 분업이 용이|개발 시간의 증가로 개발 비용 증가
+  기능에 따라 code가 분리 되어 유지 보수가 쉬워짐|
+  확장성이 뛰어남
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## Cookie와 HttpSession
+
+### http protocol
+
+- client가 server에 요청
+
+- server는 요청에 대한 처리 후 client에 응답
+
+- 응답 후 연결을 해제
+
+  - 지속적인 연결로 인한 자원낭비를 줄이기 위해 연결을 해제
+
+  - client와 server가 연결 상태를 유지해야 하는 경우 문제가 발생 (로그인 정보)
+
+  - client 단위로 상태 정보를 유지해야 하는 경우 Cookie와 Session이 사용됨
+
+<br>
+
+[목차로 이동](#목차)
+
+### Cookie
+
+> javax.servlet.http.Cookie
+
+- 개요
+
+  - 서버가 사용자의 컴퓨터에 저장하는 정보파일
+
+  - 사용자가 별도의 요청을 하지 않아도 브라우저는 request시 Cookie를 Request Header에 넣어 서버에 전송
+
+  - key와 value로 구성되고 String 형태로 이루어져 있음
+
+  - 브라우저마다 저장되는 쿠키는 다름 (서버는 브라우저가 다르면 다른 사용자로 인식)
+
+- 사용목적
+
+  - 세션관리 : 사용자 아이디, 접속시간, 장바구니 등 서버가 알아야 할 정보 저장
+
+  - 개인화 : 사용자마다 적절한 페이지를 보여줄 수 있음
+
+  - 트래킹 : 사용자의 행동과 패턴을 분석하고 기록
+
+- 사용예시
+
+  - ID 저장(자동로그인)
+
+  - 일주일간 다시 보지 않기
+
+  - 최근 검색한 상품들을 광고에 추천
+
+  - 장바구니 기능
+
+- 구성요소
+
+  - 이름 : 각 쿠키를 구별하는 데 사용되는 이름
+
+  - 값
+  - 유효기간
+  - 도메인 : 쿠키를 전송할 도메인
+  - 경로(path) : 쿠키를 전송할 요청 경로
+
+- 동작 순서
+
+  - Client가 페이지를 요청
+
+  - WAS가 Cookie를 생성
+  - HTTP Header에 Cookie를 넣어 응답
+  - 브라우저는 넘겨받은 Cookie를 PC에저장, 다시 WAS가 요청할 때 요청과 함께 Cookie를 전송
+  - 브라우저가 종료되어도 Cookie의 유효 기간이 남아 있다면 Client는 계속 보관
+  - 동일 사이트 재방문시 Client의 PC에 해당 Cookie가 있는 경우, 요청 페이지와 함께 Cookie를 전송
+
+- 특징
+
+  - 클라이언트에 총 300개의 쿠키를 저장할 수 있음
+
+  - 하나의 도메인 당 20개의 쿠키를 가질 수 있음
+  - 하나의 쿠키는 4KB까지 저장 가능
+
+- 주요 기능
+
+  기능|method
+  :--|:--
+  생성|Cookie cookie=new Cookie(String name, String value);
+  값 변경/얻기|cookie.serValue(String value); / String value=cookie.getValue();
+  사용 도메인지정/얻기|cookie.setDomain(String domain); / String domain=cookie.getDomain();
+  값 범위지정/얻기|cookie.setPath(String path); / String  path=cookie.getPath();
+  Cookie의 유효기간지정/얻기|cookie.setMaxAge(int expiry); / int expiry=cookie.getMaxAge();<br>cookie 삭제 : cookie.setMaxAge(0);
+  생성된 Cookie를 Client에 전송|response.addCookie(cookie);
+  Client에 저장된 Cookie 얻기|Cookie cookies[]=request.getCookies();
+
+<br>
+
+[목차로 이동](#목차)
+
+### HttpSession
+
+> javax.servlet.http.HttpSession
+
+- 개요
+
+  - 방문자가 웹 서버에 접속해 있는 상태를 하나의 단위로 보고 그것을 세션이라 함
+
+  - WAS의 메모리에 Object의 형태로 저장
+  - 메모리가 허용하는 용량까지 제한 업싱 저장 가능
+
+- 사용 예
+
+  - site 내에서 화면을 이동해도 로그인(사용자 정보)이 풀리지 않고 유지
+
+  - 장바구니
+
+- 동작 순서
+
+  - 클라이언트가 페이지를 요청
+
+  - 서버는 접근한 클라이언트의 Request-Header 필드인 Cookie를 확인하여, 클라이언트가 해당 session-id를 보냈는지 확인
+  - session-id가 존재하지 않는다면, 서버는 session-id를 생상해 클라이언트에게 돌려줌
+  - 서버에서 클라이언트로 돌려준 session-id를 쿠키를 사용해 서버에 저장. 쿠키 이름 : JSESSIONID
+  - 클라이언트는 재 접속 시, 이 쿠키(JSESSIONID)를 이용하여 session-id 값을 서버에 전달
+
+- 특징
+
+  - 웹 서버에 웹 컨테이너의 상태를 유지하기 위한 정보를 저장
+
+  - 웹 서버에 저장되는 쿠키(세선쿠키)
+  - 브라우저를 닫거나, 서버에서 세션을 삭제 했을 떄만 삭제가 되므로, 쿠키보다 비교적 보안이 좋음
+  - 저장 데이터에 제한이 없음
+  - 각 클라이언트 고유 Session ID를 부여함
+  - Session ID로 클라이언트를 구반하여 각 클라이언트 요구에 맞는 서비스 제공
+
+- 주요 기능
+  기능|method
+  :--|:--
+  생성|HttpSession session=request.getSession();<br>HttpSession session=request.getSession(false);
+  값 저장|session.setAttribute(String name, Object value);
+  값 얻기|Object obj=session.getAttribute(String name);
+  값 제거|session.removeAttribute(String name); // 특정 이름의 속성제거<br>session.invalidate(); // binding되어 있는 모든 속성 제거
+  생성시간|long ct=session.getCreateionTime();
+  마지막 접근 시간|long last=session.getLastAccessedTime();
+
+  <br>
+
+[목차로 이동](#목차)
+
+---
+
+## EL (Expression Language)
+
+### EL 개요
+
+- 개요
+
+  - EL은 표현을 위한 언어로 JSP 스크립트의 표현식(<%= %>)을 대신하여 속성 값을 쉽게 출력하도록 고안된 언어
+
+  - EL 표현식에서 도트 연산자 왼쪽은 반드시 java.util.Map 객체 또는 Java Bean 객체여야 함
+  - EL 표현식에서 도트 연산자 오른쪽은 반드시 맵의 키이거나 Bean 프로퍼티여야 함
+
+- 기능
+
+  - JSP의 네 가지 기본 객체가 제공하는 영역의 속성 사용
+
+  - 자바 클래스 메서드 호출 기능
+  - 표현 언어만의 기본 객체 제공
+  - 수치, 관계, 논리 연산 제공
+
+<br>
+
+[목차로 이동](#목차)
+
+### EL 문법
+
+- 문법
+  
+  ```java
+  // JSP의 스크립트릿을 EL로 표현
+  <%= ((com.myapp.model.MemberDto)request.getAttribute("userinfo")).getZipDto().getAddress %>
+  ${userinfo.zipDto.address}
+
+  // EL :  Map을 사용하는 경우
+  ${Map.Map의키} 
+
+  // EL :  Java Bean을 사용하는 경우
+  ${Java Bean.Bean 프로퍼티}
+  ```
+
+  - [] 연산자
+
+    - EL에는 Dot 표기법 외에 [] 연산자를 사용하여 객체의 값에 접근할 수 있음
+
+    - [] 연산자 안의 값이 문자열인 경우, 맵의 키가 될 수도, Bean 프로퍼티나 리스트 및 배열의 인덱스가 될 수 있음
+    - 배열과 리스트인 경우, 문자로 된 인덱스 값은 숫자로 변경하여 처리
+
+      ```java
+      // [] 연산자를 이용한 객체 프로퍼티 접근
+      ${userinfo["name"]}
+
+      // Dot 표기를 이용한 객체 프로퍼티 접근
+      ${userinfo.name}
+
+      // 리스트나 배열 요소에 접근
+      // Servlet
+      String[] names={"홍길동", "이순신"};
+      request.setAttribute("userNames", names);
+
+      // JSP
+      ${userNames[0]} // 홍길동
+      ${userNames["1"]} // 문자열인 인덱스 값이 숫자로 변경되어 이순신
+      ```
+
+<br>
+
+[목차로 이동](#목차)
+
+### EL 내장객체
+
+- JSP 페이지의 EL 표현식에서 사용할 수 있는 객체
+
+  category|identifier|Type|description
+  :--|:--|:--|:--
+  JSP|pageContext|Java Bean|현재 페이지의 프로세싱과 상응하는 PageContext instance
+  범위(scope)|pageScope|Map|page scope에 저장된 객체를 추출
+  &nbsp;|requestScope|Map|request scope에 저장된 객체를 추출
+  &nbsp;|sessionScope|Map|session scope에 저장된 객체를 추출
+  &nbsp;|applicationScope|Map|application scope에 저장된 객체를 추출
+  요청 매개변수|param|Map|ServletRequest.getParameter(String)을 통해 요청 정보를 추출
+  &nbsp;|paramValues|Map|ServletRequest.getParameterValues(String)을 통해 요청 정보를 추출
+  요쳥 헤더|header|Map|HttpServletRequest.getHeader(String)을 통해 헤더 정보를 추출
+  &nbsp;|headerValues|Map|HttpServletRequest.getHeaders(String)을 통해 헤더 정보를 추출
+  쿠키|cookie|Map|HttpServletRequest.getCookies()를 통해 쿠키 정보를 추출
+  초기화 매개변수|initParam|Map|ServletContext.getInitParameter(String)를 통해 초기화 파라미터를 추출
+
+<br>
+
+[목차로 이동](#목차)
+
+### EL 사용
+
+- EL 사용
+
+  - pageContext를 제외한 모든 EL 내장 객체는 Map
+
+  - key와 value의 쌍으로 값을 저장
+  - 기본 문법: ```${expr}```
+  
+- EL에서 객체 접근
+
+  - request.setAttribute("userinfo", "홍길동");
+
+    - ${requestScope.userinfo}
+
+    - ${pageContext.request.userinfo}
+    - ${userinfo}
+      > property 이름만 작성시 자동으로 pageScope > requestScope > sessionScope > applicationScope 순으로 객체를 찾음
+
+  - url?name=홍길동&fruit=사과&fruit=파인애플
+    - ${param.name}
+
+    - ${paramValues.fruit[0]}
+    - ${paramValues.fruit[1]}
+
+- ${cookie.id.value}
+
+  - Cookie가 null이라면 null return
+
+  - null이 아니라면 id를 검사 후 null이라면 null return
+  - null이 아니라면 value값 검사
+    > EL은 값이 null이면 공백을 출력함
+
+  ```java
+  // 스크립트릿을 통한 쿠키 값 출력
+  Cookie[] cookies=request.getCookies();
+  for(Cookie cookie:cookies) {
+    if(cookie.getName().equals("userId")) {
+      out.println(cookie.getValue());
+    }
+  }
+
+  // EL 내장객체를 통한 쿠키 값 출력
+  ${cookie.userId.value} 
+  ```
+
+- EL 연산자
+  종류|설명
+  :--|:--
+  산술|+, -, *, / (div), % (mod)
+  관계형|== (eq), != (ne), < (lt), > (gt), <= (le), >= (ge)
+  3항 연산|조건 ? 값1 : 값2
+  논리|&& (and), || (or), ! (not)
+  타당성검사|empty
+
+  - empty 연산결과 true인 경우 (${empty var})
+
+    - null
+
+    - 빈 문자열("")
+    - 길이가 0인 배열([])
+    - 빈 Map 객체
+    - 빈 Collection 객체
+
+- EL 에서 객체 메서드 호출
+  ```java
+  <%
+  List<MemberDto> list=dao.getMembers();
+  request.setAttribute("users", list);
+  %>
+
+  // 회원수
+  ${requestScope.users.size()}
+  ${users.size()}
+  <%= request.getAttribute("users").getSize() %>
+  ```
+
+  <br>
+
+[목차로 이동](#목차)
+
+---
+
+## JSTL (Jsp Standard Tag Library)
+
+- 개요
+
