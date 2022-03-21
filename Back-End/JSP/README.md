@@ -26,9 +26,12 @@
     - [EL 문법](#el-문법)
     - [EL 내장객체](#el-내장객체)
   - [JSTL (Jsp Standard Tag Library)](#jstl-jsp-standard-tag-library)
-  - [](#)
-  - [](#)
-  - [](#)
+    - [JSTL Tag](#jstl-tag)
+    - [JSTL - core tag](#jstl---core-tag)
+      - [변수 선언 - <c:set>](#변수-선언---cset)
+      - [예외 - <c:catch>](#예외---ccatch)
+      - [조건문 - <c:if>,<c:choose>,<c:when>,<c:otherwise>](#조건문---cifcchoosecwhencotherwise)
+      - [반복문 - <c:forEach>](#반복문---cforeach)
 
 <br>
 
@@ -717,3 +720,191 @@ public class HelloServlet extend HttpServlet {
 
 - 개요
 
+  - custom tag : 개발자가 직접 태그를 작성할 수 있는 기능을 제공
+  - custom tag 중에서 많이 사용되는 것들을 모아서 JSTL로 표준화
+  - 논리 판단, 반복문 처리, 데이터베이스 등의 처리를 할 수 있음
+  - JSP 2.1 ~ JSP 2.2 와 호환되는 버전은 JSTL 1.2
+  - JSTL은 JSP 페이지에서 스크립트릿을 사용하지 않고 액션태그를 통해 간단하게 처리하는 방법 제공
+  - JSTL에는 다양한 액션태그가 존재, EL과 함께 사용하여 코드를 간결하게 작성함
+    > jstl 1.2 jap link https://mvnrepository.com/artifact/javax.servlet/jstl
+
+<br>
+
+[목차로 이동](#목차)
+
+### JSTL Tag
+- JSTL Tag
+
+  - directive 선언 형식 : ```<%@ taglib prefix="prefix" url="url" %>```
+
+    library|prefix|function|URI
+    :--|:--|:--|:--
+    core|c|변수 지원, 흐름제어, URL처리|http://java.sun.com/jsp/jstl/c
+    XML|x|XML코어, 흐름제어, XML변환|http://java.sun.com/jsp/jstl/xml
+    국제화|fmt|지역, 메시지 형식, 숫자 및 날짜 형식|http://java.sun.com/jsp/jstl/fmt
+    database|dql|SQL|http://java.sun.com/jsp/jstl/sql
+    함수|&nbsp;|Collection, String 처리|http://java.sun.com/jsp/jstl/functions
+
+<br>
+
+[목차로 이동](#목차)
+
+### JSTL - core tag
+
+  - 선언 : ```<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core %>```
+
+    function|tag|description
+    :--|:--|:--
+    변수지원|set|jsp page에서 사용 할 변수 설정
+    &nbsp;|remove|설정한 변수를 제거
+    흐름제어|if|조건에 따른 코드 실행
+    &nbsp;|choose,when,otherwise|다중 조건을 처리할 때 사용(if ~ else if ~ else)
+    &nbsp;|forEach|array나 collection의 각 항목을 처리할 때 사용
+    &nbsp;|forTokens|구분자로 분리된 각각의 토큰을 처리할 때 사용(StringTokenizer)
+    URL처리|import|URL을 사용하여 다른 자원의 결과를 삽입
+    &nbsp;|redirect|지정한 경로로 redirect
+    &nbsp;|url|URL 작성
+    기타태그|catch|Exception 처리에 사용
+    &nbsp;|on|JspWriter에 내용을 처리한 후 출력
+
+<br>
+
+[목차로 이동](#목차)
+
+#### 변수 선언 - <c:set>
+
+- 변수나 특정 객체의 프로퍼티에 값을 할당할 때 사용
+
+  ```java
+  //value 속성을 사용하여 생존범위 변수 값 할당
+  <c:set value="value" var="varName" [scope="{page|request|session|application}"] />
+  ```
+
+- value 속성의 값이나 액션의 Body content로 값을 설정
+- var 속성은 변수를 나타내며, 변수의 생존범위는 scope 속성으로 설정 (default로 page)
+
+  ```java
+  // 액션의 Body 컨텐츠를 사용하여 생존범위 변수 값 할당
+  <c:set var="varName" [scope="page|request|session|application}"]>
+  body content
+  </c:set>
+  ```
+
+- 특정 객체의 프로퍼티에 값을 할당할 때는 target 속성에 객체를 설정하고 property에 프로퍼티명을 설정
+
+  ```java
+  // value 속성을 이용하여 대상 객체의 프로퍼티 값 할당
+  <c:set value="value" target="target" property="propertyName"/>
+  ```
+  ```java
+  // 액션의 Body 컨텐츠를 사용하여 대상 객체의 프로퍼티 값 할당
+  <c:set target="target" property="propertyName">
+  body content
+  </c:set>
+  ```
+
+<br>
+
+[목차로 이동](#목차)
+
+#### 예외 - <c:catch>
+
+-  JSP 페이지는 예외가 발생하면 지정된 오류페이지를 통해 처리함
+
+-  <c:catch> 액션은 JSP 페이지에서 예외가 발생할 만한 코드를 오류페이지로 넘기지 않고 직접 처리할 때 사용
+-  var 속성에는 발생한 예외를 담을 page 생존범위 변수 지정
+-  <c:catch>와 <c:if> 액션을 함께 사용하여 try-catch 같은 기능 구현
+
+    ```java
+    <%@ page contentType="text/html" pageEncoding="UTF-8" errorPage="error.jsp" %>
+    <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+    <c:catch var="try">
+    <%
+      String str=null;
+      out.println("length of string : "+str.length()); // 예외 상황
+    %>
+    </c:catch>
+
+    <c:if test="${try != null}">
+      예외 상황입니다. ${try.message}
+    </c:if>
+    ```
+
+<br>
+
+[목차로 이동](#목차)
+
+#### 조건문 - <c:if>,<c:choose>,<c:when>,<c:otherwise>
+
+- <c:if> 액션은 test 속성에 지정된 표현식을 평가하여 결과가 true인 경우 액션의 Body 컨텐츠 수행
+  ```java
+  <c:if test="${userType eq 'admin'}">
+    <jsp:include page="admin.jsp">
+  </c:if>
+  ```
+
+- <c:if> 액션의 var 속성은 표현식의 평가 결과인 Boolean 값을 담은 변수를 나타내며, 변수의 생존범위는 scope 속성으로 설정
+  ```java
+  <c:if test="${userType eq 'admin'}" var="accessible">
+    <jsp:include page="admin.jsp">
+  </c:if>
+  <c:if test="${category=='user' && menu=='list'}">
+    회원 목록
+  </c:if>
+  ```
+
+- <c:choose><c:when><c:otherwise> 액션을 사용하면 if, else if, else 와 같이 처리 가능
+  ```java
+  <c:choose>
+    <c:when test="${userType=='admin'}">
+      관리자 화면
+    </c:when>
+    <c:when test="${userType=='member'}">
+      회원 사용자 화면
+    </c:when>
+    <c:otherwise>
+      일반 사용자 화면
+    </c:otherwise>
+  </c:choose>
+  ```
+
+<br>
+
+[목차로 이동](#목차)
+
+#### 반복문 - <c:forEach>
+
+- 컬렉션에 있는 항목들에 대하여 액션의 Body 컨텐츠를 반복하여 수행
+
+- 컬렉션에는 Array, Collection, Map 또는 콤마로 분리된 문자열이 올 수 있음
+- var 속성에는 반복에 대한 현재 항목을 담는 변수를 지정하고 items 속성은 반복할 항목들을 갖는 컬렉션을 지정
+- varStatus 속성에 지정한 변수를 통해 현재 반복의 상태를 알 수 있음
+
+  ```java
+  courses - [java, c, spring, mybatis, jquery, javascript]
+
+  // 리스트 출력
+  <c:forEach var="course" items="${courses}">
+    ${course.name}<br>
+  </c:forEach>
+
+  // 순번과 함께 리스트 출력
+  <c:forEach var="course" items="${courses}" varStatus="varStatus">
+    ${varStatus.count}. ${course.name}<br>
+  </c:forEach>
+
+  // 짝수번만 출력
+  <c:forEach var="course" items="${courses}" begin="0" end="5" step="2">
+    ${course.name}<br>
+  </c:forEach>
+
+  // 1부터 5까지 출력
+  <c:forEach var="value" begin="1" end="5" step="1">
+    ${value}<br>
+  </c:forEach>
+  ```
+  
+<br>
+
+[목차로 이동](#목차)
