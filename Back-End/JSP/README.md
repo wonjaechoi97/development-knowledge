@@ -370,7 +370,7 @@ public class HelloServlet extend HttpServlet {
 ## Model2 MVC Pattern(Model-View-Controller)
 <br>
 
-<img src="imgs/Model2_Architecture.png">
+<img src="imgs/Model2_Architecture.PNG">
 
 <br>
 
