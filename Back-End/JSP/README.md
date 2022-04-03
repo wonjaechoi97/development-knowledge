@@ -123,8 +123,8 @@ public class HelloServlet extend HttpServlet {
   method|desciption
   :---|:---
   init()|서블릿이 메모리에 로드 될 때 한번 호출, 코드 수정으로 다시 로드 되면 재 호출
-  deGet()|GET방식으로 data 전송 시 호출
-  dePost()|POST방식으로 data 전송 시 호출
+  doGet()|GET방식으로 data 전송 시 호출
+  doPost()|POST방식으로 data 전송 시 호출
   service()|모든 요청은 service()를 통해서 doXXX() 메서드로 이동
   destroy()|서블릿이 메모리에서 해제되면 호출, 코드 수정시 호출
 
