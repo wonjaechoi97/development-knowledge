@@ -739,10 +739,10 @@ public class HelloServlet extend HttpServlet {
 
     library|prefix|function|URI
     :--|:--|:--|:--
-    core|c|변수 지원, 흐름제어, URL처리|http://java.sun.com/jsp/jstl/c
+    core|c|변수 지원, 흐름제어, URL처리|http://java.sun.com/jsp/jstl/core
     XML|x|XML코어, 흐름제어, XML변환|http://java.sun.com/jsp/jstl/xml
     국제화|fmt|지역, 메시지 형식, 숫자 및 날짜 형식|http://java.sun.com/jsp/jstl/fmt
-    database|dql|SQL|http://java.sun.com/jsp/jstl/sql
+    database|sql|SQL|http://java.sun.com/jsp/jstl/sql
     함수|&nbsp;|Collection, String 처리|http://java.sun.com/jsp/jstl/functions
 
 <br>
