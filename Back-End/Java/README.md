@@ -8,10 +8,12 @@
 ## 목차
 
   - [객체 생성과 파괴](#객체-생성과-파괴)
-
     - [생성자 대신 정적 팩토리 메서드를 고려하기](#생성자-대신-정적-팩토리-메서드를-고려하기)
-
     - [생성자에 매개변수가 많다면 빌더를 고려하기](#생성자에-매개변수가-많다면-빌더를-고려하기)
+    - [private 생성자나 열거 타입으로 싱글턴임을 보증하기](#private-생성자나-열거-타입으로-싱글턴임을-보증하기)
+    - [인스턴스화를 막을땐 private 생성자를 사용하기](#인스턴스화를-막을땐-private-생성자를-사용하기)
+    - [자원을 직접 명시하지 말고 의존 객체 주입을 사용하기](#자원을-직접-명시하지-말고-의존-객체-주입을-사용하기)
+    - 
 
 <br>
 
@@ -71,8 +73,6 @@
     ```
 
     - 매개변수의 개수가 많아지면 코드를 작성하거나 읽기 어려움
-
-<br>
 
   - 자바빈즈 패턴
 
@@ -201,5 +201,127 @@
 
 [목차로 이동](#목차)
 
+<br>
+
+### private 생성자나 열거 타입으로 싱글턴임을 보증하기
+
+- 싱글턴(singleton)
+
+  > 인스턴스를 오직 하나만 생성할 수 있는 클래스
+
+- 주의사항
+
+  - 클래스를 싱글턴으로 만들면 이를 사용하는 클라이언트를 테스트하기 어려워질 수 있음
+
+    > 싱글턴 인스턴스는 mock 구현으로 대체할 수 없기 때문
+
+- 구현 방식
+
+  - public static 멤버가 final 필드인 방식
+
+    ```java
+    public class BookSystem {
+      public static final BookSystem INSTANCE= new BookSystem();
+      private BookSystem() { ... } // 생성자 private
+
+      public void leaveTheBuilding() { ... }
+    }
+    ```
+
+    - 리플렉션 API인 AccessibleObject.setAccessible을 사용해 private 생성자를 호출할 수 있는 예외가 있음
+
+      > 생성자에서 두 번째 객체 생성 시도시 예외를 던지게하여 방어함
+
+    - 장점
+
+      - public static 필드가 final로 해당 클래스가 싱글턴임이 API에 명백히 드러남
+
+      - 간결함
+
+  - 정적 팩토리 메서드를 public static 멤버로 제공하는 방식
+
+    ```java
+    public class BookSystem {
+      private static final BookSystem INSTANCE= new BookSystem();
+      private BookSystem() { ... } // 생성자 private
+      private static BookSystem getInstance() { return INSTANCE; }
+
+      public void leaveTheBuilding() { ... }
+    }
+    ```
+
+    - 리플렉션 API인 AccessibleObject.setAccessible을 사용해 private 생성자를 호출할 수 있는 예외가 있음
+
+      > 생성자에서 두 번째 객체 생성 시도시 예외를 던지게하여 방어함
+
+    - 장점
+
+      - API를 바꾸지 않고도 싱글턴이 아니게 변경할 수 있음
+
+      - 정적 팩토리를 제네릭 싱글턴 팩토리로 만들 수 있음
+
+      - 정적 팩토리의 메서드 참조를 공급자로 사용할 수 있음
+
+  - 위 두 가지 방식의 문제점
+
+    - 두 가지 방식의 싱글턴 클래스를 직렬화하려면 Serializable 인터페이스를 구현해야 할 뿐만 아니라 모든 인스턴스 필드를 transient 로 선언하고 readResolve 메서드를 제공해야 함
+
+    > Serializable 인터페이스만 구현할 경우 직렬화된 인스턴스를 역직렬화할 때마다 새로운 인스턴스가 생성됨
+
+  - 원소가 하나인 열거 타입을 선언하는 방식
+
+    ```java
+    public enum BookSystem {
+      INSTANCE;
+
+      public void leaveTheBuilding() { ... }
+    }
+    ```
+
+    - 리플렉션 공격에서 자유로움
+
+    - 직렬화에 추가 노력이 필요없음
+
+    - 대부분 상황에서 원소가 하나뿐인 열거 타입이 싱글턴을 만드는 가장 좋은 방법임
+
+    - 단점
+
+      - 만들고자하는 싱글턴이 Enum 외의 클래스를 상속해야 한다면 사용할 수 없음
+
+        > 모든 Enum 은 java.lang.enum 클래스를 상속하고 있기 때문임   
+        다른 인터페이스를 구현하는 것은 가능함
+
+[목차로 이동](#목차)
+
+<br>
+
+### 인스턴스화를 막을땐 private 생성자를 사용하기
+
+- private 생성자를 추가하면 컴파일러가 기본 생성자를 만들지 않으므로 클래스의 인스턴스화를 막을 수 있음
+
+  ```java
+  public class UtilClass {
+    // 기본 생성자가 만들어지는 것을 막는다 (인스턴스화 방지용)
+    private UtilClass() {
+      throw new AssertionError();
+    }
+  }
+  ```
+
+  - 생성자를 private으로 선언하면 하위 클래스가 상위 클래스의 생성자에 접근할 길이 막히므로 상속을 불가능하게 하는 효과도 있음
+
+[목차로 이동](#목차)
+
+<br>
+
+### 자원을 직접 명시하지 말고 의존 객체 주입을 사용하기
+
+- 
+
+[목차로 이동](#목차)
+
+<br>
+
 ---
+
 
