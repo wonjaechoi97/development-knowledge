@@ -17,6 +17,17 @@
   - [테스트 정의방법과 예시](#테스트-정의방법과-예시)
 
   - [테스트 메서드 어노테이션](#테스트-메서드-어노테이션)
+
+  - [테스트 결합](#테스트-결합)
+
+  - [테스트 비활성화](#테스트-비활성화)
+
+  - [매개변수화된 테스트](#매개변수화된-테스트)
+
+  - [JUnit 규칙](#junit-규칙)
+
+  - [정적인 JUnit 사용](#정적인-junit-사용)
+
 <br>
 
 ---
@@ -177,5 +188,185 @@
 
 ---
 
-https://www.vogella.com/tutorials/JUnit4/article.html
-~3.3
+## 테스트 결합
+
+- 여러 테스트 클래스를 하나의 테스트 모음으로 결합할 수 있음
+
+  >- 테스트를 결합하면 해당 결합의 모든 테스트 클래스가 지정된 순서대로 실행
+
+  ```java
+  import org.junit.runner.RunWith;
+  import org.junit.runnes.Suite;
+  import org.junit.runnes.Suite.SuiteClasses;
+
+  @RunWith(Suite.class)
+  @SuiteClasses({
+    MyClassTest.class,
+    MySecondClassTest.class })
+  public class AllTests {
+
+  }
+
+  ```
+
+## 테스트 비활성화
+
+- @Ignore 주석을 사용하여 테스트를 정적으로 무시할 수 있음
+
+  > 테스트 조건 정의 방법
+  >>- Assume.assumeFalse
+  >>- Assume.assumeTrue
+
+  ```java
+  Assume.assumeFalse(System.getProperty("os.name").contains("Linus"));
+  ```
+
+  > 위 코드는 Linux에서 테스트를 비활성화
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 매개변수화된 테스트
+
+- 테스트 클래스에서 매개변수를 사용할 수 있음
+
+  > 하나의 테스트 메서드를 포함핧 수 있으며 이 메서드는 제공된 다른 매개변수로 실행됨
+  >>- @RunWith(Parameterized.class) 는 매개변수화된 테스트 클래스임을 명시
+  >>- 매개변수화된 테스트 클래스는 @Parameters 어노테이션이 달린 static 메서드를 포함해야 함
+  >>>- 이 메서드는 배열 컬렉션을 생성하고 반환하고, 각 항목은 테스트의 매개변수로 사용됨
+  
+  ```java
+  import org.junit.Test;
+  import org.junit.runner.RunWith;
+  import org.junit.runners.Parameterized;
+  import org.junit.runners.Parameterized.Parameters;
+
+  import static org.junit.Assert.assertEquals;
+  import static org.junit.runners.Parameterized.*;
+
+  @RunWith(Parameterized.class)
+  public class ParameterizedTestFields {
+    @Parameter(0)
+    public int m1;
+    @Parameter(1)
+    public int m2;
+    @Parameter(2)
+    public int result;
+
+    // @Parameter 대신 생성자도 가능함
+    /*
+    public ParameterizedTestUsingConstructor(int p1, int p2){
+      m1=p1;
+      m2=p2;
+    }
+    */
+
+    @Parameters
+    public static Collection<Object[]> data() {
+      Object[][] data=new Object[][] {{1,2,2},{5,3,15},{121,4,484}};
+      return Arrays.asList(data);
+    }
+
+    @Test
+    public void testMultiplyException() {
+      MyClass tester=new MyClass();
+      assertEquals("Result", result, tester.multiply(m1,m2));
+    }
+
+    class MyClass {
+      public int multyply(int i, int j){
+        return i*j;
+      }
+    }
+  }
+  ```
+
+  > 위의 예에서 테스트 메서드는 데이터셋의 개수만큼 3번 실행됨
+
+[더 유연하고 쓰기 쉬운 접근 방식 링크 참조](https://github.com/Pragmatists/JUnitParams)
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## JUnit 규칙
+
+- @Rule 어노테이션을 통해 테스트 클래스의 각 테스트에 동작을 추가할 수 있음
+
+  > 테스트에서 사용하고 구성할 수 있는 개체를 만들 수 있음   
+  >- 위의 예시에선 테스트 코드를 실행하는 동안 예상되는 예외 메시지를 지정할 수 있음
+
+  ```java
+  import org.junit.Rule;
+  import org.junit.Test;
+  import org.junit.rules.ExpectedException;
+
+  public class RuleExceptionTesterExample {
+    @Rule
+    public ExceptedException exception=ExpectedException.none();
+
+    @Test
+    public void throwsIllegalArgumentExceptionIfIconIsNull() {
+      exception.expect(IllegalArgumentException.class);
+      exception.expectMessage("Negative value not allowed");
+      ClassToBeTested t=new ClassToBeTested();
+      t.methodToBeTest(-1);
+    }
+  }
+  ```
+
+  >- 각 테스트 실행 후 자동으로 제거되는 파일과 폴더를 설정할 수 있음
+
+  ```java
+  import static org.junit.Assert.assertTrue;
+
+  import java.io.File;
+  import java.io.IOException;
+
+  import org.junit.Rule;
+  import org.junit.Test;
+  import org.junit.rules.TemporaryFolder;
+
+  public class RuleTester {
+    @Rule
+    public TemporaryFolder folder=new TemporaryFolder();
+
+    @Test
+    public void testUsingTempFolder() thorws IOException {
+      File createdFolder=folder.newFolder("newfolder");
+      File createdFile=folder.newFile("myfilefile.txt");
+      assertTrue(createdFile.exists());
+    }
+  }
+  ```
+
+[더 많은 예시 링크 참조](https://github.com/junit-team/junit4/wiki/Rules)
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 정적인 JUnit 사용
+
+- 클래스를 지정하지 않고 필드 및 메서드를 그대로 사용할 수 있어 테스트의 길이를 간결하게 함
+
+  ```java
+  Assert.assertEquals("10*5 is 50", 50, tester.multiply(10, 5));
+
+  import static org.junit.Assert.assertEquals;
+
+  assertEquals("10*5 is 50", 50, tester.multiply(10, 5));
+  ```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
