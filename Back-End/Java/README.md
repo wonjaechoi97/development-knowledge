@@ -13,7 +13,7 @@
     - [private 생성자나 열거 타입으로 싱글턴임을 보증하기](#private-생성자나-열거-타입으로-싱글턴임을-보증하기)
     - [인스턴스화를 막을땐 private 생성자를 사용하기](#인스턴스화를-막을땐-private-생성자를-사용하기)
     - [자원을 직접 명시하지 말고 의존 객체 주입을 사용하기](#자원을-직접-명시하지-말고-의존-객체-주입을-사용하기)
-    - 
+    - [불필요한 객체 생성 피하기](#불필요한-객체-생성-피하기)
 
 <br>
 
@@ -316,7 +316,74 @@
 
 ### 자원을 직접 명시하지 말고 의존 객체 주입을 사용하기
 
-- 
+- 의존 객체 주입이 필요한 상황
+
+  > 클래스가 여러 자원 인스턴스를 지원해야 하며, 클라이언트가 원하는 자원을 사용해야 할 때
+
+- 의존 객체 주입의 두 가지 형태
+
+  >- 인스턴스를 생성할 때 생성자에 필요한 자원을 넘겨주는 형태   
+  >- 생성자에 자원 팩토리를 넘겨주는 방식
+  >> 팩토리란 호출할 때마다 특정 타입의 인스턴스를 반복해서 만들어주는 객체
+
+- 장점
+
+  > 클래스의 유연성, 재사용성, 테스트 용이성을 훌륭히 개선해줌
+
+[목차로 이동](#목차)
+
+<br>
+
+### 불필요한 객체 생성 피하기
+
+- String 리터럴
+
+  ```java
+  String s=new String("abcdef");
+  ```
+
+  > 위 문장은 실행될 때마다 String 인스턴스를 새로 생성함   
+  > 반복문이나 자주 호출되는 메서드에 있다면 쓸데없는 String 인스턴스가 수없이 만들어짐
+
+  ```java
+  String s=new String("abcdef");
+  ```
+
+  > 위 문장은 하나의 String 인스턴스를 사용할 뿐만 아니라 같은 JVM 에서 문자열 리터럴 재사용이 보장됨
+
+- 정규표현식
+
+  ```java
+  static boolean isRomanNumeral(String s) {
+    return s.matches("^(?=.)M*C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+  }
+  ```
+
+  > String.matches 의 인자로 주어진 패턴은 유한 상태 머신을 만들기 때문에 인스턴스 생성 비용이 높은데 한번쓰고 버려져서 가비지 컬렉션 대상이 되므로 성능이 중요한 상황에서 반복 사용하기엔 적절하지 않음
+
+  ```java
+  public class RomanNumerals {
+    private static final Pattern ROMAN=Pattern.compile("^(?=.)M*C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+    static boolean isRomanNumeral(String s) {
+      return ROMAN.matcher(s).matches();
+    }
+  }
+  ```
+
+  > 패턴 인스턴스를 클래스 초기화 과정에서 직접 생성해 캐싱하여 재사용함으로써 성능을 상당히 개선할 수 있음
+
+- 오토박싱
+
+  ```java
+  private static long sum() {
+    Long sum=0L;
+    for(long i=0; i<=Integer.MAX_VALUE; i++)
+      sum+=i;
+    return sum;
+  }
+  ```
+
+  > 위 코드에서 sum을 Long으로 선언해서 for 반복문 동안 오토박싱이 이루어져 2^31 개의 Long 인스턴스가 만들어짐
 
 [목차로 이동](#목차)
 
