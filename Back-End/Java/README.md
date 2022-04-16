@@ -394,29 +394,29 @@
 ## 다 쓴 객체 참조는 해제하기
 > gc만 믿고 메모리 관리에 신경 쓰지 않아도 된다고 오해하면 안되는 이유
 >- 자기 메모리를 직접 관리하는 클래스
-> ```java
-> public class Stack {
->   private Object[] elements;
->   private int size=0;
->   private static final int DEFAULT_INITIAL_CAPACITY=16;
->
->   public Object pop() {
->     if(size==0) throw new EmptyStackException();
->     return elements[--size];
->   }
-> }
-> ```
+>> ```java
+>> public class Stack {
+>>   private Object[] elements;
+>>   private int size=0;
+>>   private static final int DEFAULT_INITIAL_CAPACITY=16;
+>>
+>>   public Object pop() {
+>>     if(size==0) throw new EmptyStackException();
+>>     return elements[--size];
+>>   }
+>> }
+>> ```
 >>- 이슈사항
 >>>- 스택이 커졌다가 줄어들었을 때 스택에서 꺼내진 객체들이 더 이상 사용되지 않더라도 gc가 회수하지 않음
 >>>- 객체 참조 하나를 살려두면 gc는 그 객체가 참조하는 모든 객체(또 그 객체들이 참조하는 모든 객체)를 회수하지 못하여 잠재적으로 성능에 악영향을 줄 수 있음
-> ```java
->   public Object pop() {
->     if(size==0) throw new EmptyStackException();
->     Object result=elements[--size];
->     elements[size]=null;
->     return result;
->   }
-> ```
+>> ```java
+>>   public Object pop() {
+>>     if(size==0) throw new EmptyStackException();
+>>     Object result=elements[--size];
+>>     elements[size]=null;
+>>     return result;
+>>   }
+>> ```
 >>- 해결법
 >>>- 자기 메모리를 직접 관리하는 클래스라면 항시 메모리 누수에 주의하여 원소를 사용한 즉시 그 원소가 참조한 객체들을 null처리 (참조해제) 해야함
 >- 캐시
