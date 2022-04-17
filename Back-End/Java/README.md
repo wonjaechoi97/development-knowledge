@@ -16,6 +16,9 @@
     - [불필요한 객체 생성 피하기](#불필요한-객체-생성-피하기)
     - [다 쓴 객체 참조는 해제하기](#다-쓴-객체-참조는-해제하기)
     - [finalizer와 cleaner 사용은 피하기](#finalizer와-cleaner-사용은-피하기)
+    - [try-finally 보다 try-with-resources를 사용하기](#try-finally-보다-try-with-resources를-사용하기)
+  - [모든 객체의 공통 메서드](#모든-객체의-공통-메서드)
+    - [equals는 일반 규약을 지켜 재정의하기](#equals는-일반-규약을-지켜-재정의하기)
 
 <br>
 
@@ -391,7 +394,7 @@
 
 <br>
 
-## 다 쓴 객체 참조는 해제하기
+### 다 쓴 객체 참조는 해제하기
 > gc만 믿고 메모리 관리에 신경 쓰지 않아도 된다고 오해하면 안되는 이유
 >- 자기 메모리를 직접 관리하는 클래스
 >> ```java
@@ -438,8 +441,7 @@
 
 <br>
 
-## finalizer와 cleaner 사용은 피하기
-
+### finalizer와 cleaner 사용은 피하기
 > 자바의 두 가지 객체 소멸자
 >- 이슈사항
 >>- 자바는 gc가 접근할 수 없게된 객체를 회수하는 역할을 하기 때문에 finalizer와 cleaner의 두 가지 객체 소멸자는 gc에 의존하기 때문에 수행 시점과 수행 여부가 보장되지 않음
@@ -456,4 +458,76 @@
 
 <br>
 
+### try-finally 보다 try-with-resources를 사용하기
+>- 자원이 둘 이상이면 try-finally 방식은 코드가 매우 지저분해짐
+>```java
+>static void copy(String src, String dst) throws IOException {
+>  InputStream in=new FileInputStream(src);
+>  try {
+>    OutputStream out=new FileOutputStream(dst);
+>    try {
+>      byte[] buf=new byte[BUFFER_SIZE];
+>      int n;
+>      while((n=int.read(buf))>=0)
+>        out.write(buf, 0, n);
+>    } finally {
+>      out.close();
+>    }
+>  } finally {
+>    in.close();
+>  }
+>}
+>```
+>- try-with-resources 를 사용하면 정확하고 쉽게 자원을 회수할 수 있으며 코드가 짧아지고 분명해짐
+>>- 해당 자원이 AutoCloseable 인터페이스가 구현되어 있어야 사용할 수 있음
+>```java
+>static void copy(String src, String dst) throws IOException {
+>  try (InputStream in=new FileInputStream(src);
+>       OutputStream out=new FileOutputStream(dst);) {
+>    byte[] buf=new byte[BUFFER_SIZE];
+>    int n;
+>    while((n=int.read(buf))>=0)
+>      out.write(buf, 0, n);
+>  }
+>}
+>```
+
+[목차로 이동](#목차)
+
+<br>
+
 ---
+
+## 모든 객체의 공통 메서드
+
+### equals는 일반 규약을 지켜 재정의하기
+> equals 메서드는 재정의하기 쉬워 보이지만 잘못하면 치명적인 결과를 초래함
+>- 재정의하지 않는것이 최선인 경우
+>>- 각 인스턴스가 본질적으로 고유한 경우 (Thread)
+>>- 인스턴스의 논리적 동치성을 검사할 일이 없는 경우
+>>- 상위 클래스에서 재정의한 equals가 하위 클래스에서도 사용할 수 있는 경우
+>>- 클래스가 private이거나 package-private(default)이고 equals 메서드를 호출할 일이 없는 경우
+>- 재정의해야 하는 경우
+>>- 상위 클래스의 equals가 논리적 동치성을 비교하도록 재정의되지 않았을 경우
+>>>- 값이 같은 인스턴스가 둘 이상 만들어지지 않음을 보장하는 인스턴스 통제 클래스라면 equals를 재정의하지않아도 됨 (Enum)
+>- equals 메서드를 재정의할 때 지켜야할 일반 규약
+>>- 반사성(reflexivity) - null이 아닌 모든 참조 값 x에 대해, x.equals(x)는 true
+>>- 대칭성(symmetry) - null이 아닌 모든 참조 값 x, y에 대해, x.equals(y)가 ture면 y.equals(x)도 true 
+>>- 추이성(transitivity) - null이 아닌 모든 참조 값 x, y, z에 대해, x.equals(y)가 true이고 y.equals(z)도 true면 x.equals(z)도 true
+>>- 일관성(consistency) - null이 아닌 모든 참조 값 x, y에 대해, x.equals(y)를 반복해서 호출하면 항상 ture를 반환하거나 항상 false를 반환
+>>- null 아님 - null이 아닌 모든 참조 값 x에 대해, x.equals(null)은 false
+>- 양질의 equals 메서드 구현 단계
+>>- == 연산자를 사용해 입력이 자기 자신의 참조인지 확인
+>>- instanceof 연산자로 입력이 올바른 타입인지 확인
+>>- 입력을 올바른 타입으로 형번환
+>>- 입력 객체와 자기 자신의 대응되는 핵심필드들이 모두 일치하는지 하나씩 검사
+>>>- float와 double을 제외한 기본 타입 필드는 == 연산자로 비교
+>>>- 참조 타입 필드는 각각의 equals 메서드로 비교
+>>>- float와 double 필드는 각각 정정 메서드인 Float.compare(float, float), Double.compare(double, double)로 비교
+>- 주의사항
+>>- equals를 재정의할 땐 hashCode도 반드시 재정의
+>>- 입력 타입이 Object가 아니라면 재정의가 아니라 다중정의이므로 주의할것
+
+[목차로 이동](#목차)
+
+<br>
