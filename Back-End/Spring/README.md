@@ -31,6 +31,9 @@
   - [View](#view)
   - [Model](#model)
   - [Spring Web Application의 동작순서](#spring-web-application의-동작순서)
+  - [FileUpload](#fileupload)
+  - [FileDownload](#filedownload)
+  - [Interceptor](#interceptor)
 
 <br>
 
@@ -963,3 +966,307 @@
 [목차로 이동](#목차)
 
 ---
+
+>## FileUpload
+>- 구현방법
+>>- pom.xml
+>> ```xml
+>> <dependency>
+>>   <groupId>commons-fileupload</groupId>
+>>   <artifactId>commons-fileupload</artifactId>
+>>   <version>1.3.3</version>
+>> </dependency>
+>> ```
+>>- servlet-context.xml
+>> ```xml
+>> <beans:bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+>>   <beans:property name="defaultEncoding" value="UTF-8"/>
+>>   <!-- 최대 업로드 가능한 파일의 바이트 크기 -->
+>>   <beans:property name="maxUploadSize" value="52428800"/> 
+>>   <!-- 디스크에 임시 파일을 생성하기 전에 메모리에 보관할 수 있는 최대 바이트 크기 -->
+>>   <beans:property name="maxInMemorySize" value="1048576"/>
+>> </beans:bean>
+>> ``` 
+>>- write.jsp
+>> ```html
+>> <form method="post" enctype="multipart/form-data" action="">
+>>   <label for="title">제목:</label>
+>>   <input type="text" id="title" name="title">
+>>   <label for="content">내용:</label>
+>>   <input type="text" id="content" name="content">
+>>   <label for="file">파일:</label>
+>>   <input type="file" name="upfile" multiple="multiple">
+>>   <button type="button">글작성</button>
+>>   <button type="reset">초기화</button>
+>> </form>
+>> ```
+>>- FileInfoDto.java
+>> ```java
+>> public class FileInfoDto {
+>>   private String isbn;
+>>   private String saveFolder;
+>>   private String originFile;
+>>   private String saveFile;
+>> }
+>> ```
+>>- BookDto.java
+>> ```java
+>> public class BookDto {
+>>   private int isbn;
+>>   private String title;
+>>   private String content;
+>>   private String regtime;
+>>   private List<FileInfoDto> fileInfos;
+>> }
+>> ```
+>>- BookServiceImpl.java
+>> ```java
+>> @Override
+>> @Transactional
+>> public void writeBook(BookDto bookDto) throws Exception {
+>>   if(bookDto.getIsbn()==null || bookDto.getContent()==null) throw new Exception();
+>>   BookMapper bookMapper=sqlSession.getMapper(BookMapper.class);
+>>   bookMapper.writeBook(bookDto);
+>>   bookMapper.fileRegister(bookDto);
+>> }
+>> ```
+>>- BookController.java
+>> ```java
+>> @RequestMapping(value="/write", method=RequestMethod.POST)
+>> public String write(BookDto bookDto, @RequestParam("upfile" MultipartFile[] files), ... ) {
+>>   String realPath=servletContext.getRealPath("/upload");
+>>   String today=new SimpleDateFormant("yyMMdd").format(new Date());
+>>   String saveFolder=realPath.File.separator+today;
+>>   File folder=new File(saveFolder);
+>>   if(!folder.exists()) folder.mkdirs();
+>>   List<FileInfoDto> fileInfos=new ArrayList<FileInfoDto>();
+>>   for(MultipartFile mfile : files) {
+>>     FileInfoDto fileInfoDto=new FileInfoDto();
+>>     String originalFileName=mfile.getOriginalFilename();
+>>     if(!originalFileName.isEmpty()) {
+>>       String saveFileName=UUID.randomUUID().toString()+originalFileName.substring(originalFileName.lastIndexOf('.'));
+>>       fileInfoDto.setSaveFolder(today);
+>>       fileInfoDto.setOriginFile(originalFileName);
+>>       fileInfoDto.setSaveFile(saveFileName);
+>>       mfil.transferTo(new File(folder, saveFileName));
+>>     }
+>>     fileInfos.add(fileInfoDto);
+>>   }
+>>   bookDto.setFileInfos(fileInfos);
+>>   try {
+>>     bookService.writeBook(bookDto);
+>>     return "book/writesuccess";
+>>   } catch (Exception e) {
+>>     model.addAttribute("msg", "작성실패");  
+>>     return "error/error";
+>>   }
+>> }
+>> 
+>> ```
+>>- book.xml
+>> ```xml
+>> <resultMap type="BookDto" id="bookList">
+>>   <result property="isbn" column="isbn" />
+>>   <result property="title" column="title" />
+>>   <result property="content" column="content" />
+>>   <result property="regtime" column="regtime" />
+>>   <collection property="fileInfos" column="isbn" javaType="List" ofType="FileInfoDto" select="fileInfoList" />
+>> </resultMap>
+>> 
+>> <insert id="writeBook" parameterType="BookDto">
+>>   insert into book {isbn, title, content, regtime} values(${isbn}, ${title}, ${content}, now())
+>>   <selectKey resultType="int" keyProperty="isbn" order"AFTER">
+>>     SELECT LAST_INSERT_ID()
+>>   </selectKey>
+>> </insert>
+>> <insert id="fileRegister" parameterType="BookDto">
+>>   insert into file_info (isbn, savefolder, orginfile, savefile) values
+>>   <foreach collection="fileInfos" item="fileinfo" separator=" , ">
+>>     (#{isbn}, #{fileinfo.saveFolder}, #{fileinfo.originFile}, #{fileinfo.saveFile})
+>>   </foreach>
+>> </insert>
+>> <select id="listBook" parameterType="map" resultMap="bookList">
+>>   select isbn, title, content, regtime from book
+>>   <if test="word != null and word != ''">
+>>     <if test="key == 'title'">
+>>       where title like concat('%', #{word}, '%')
+>>     </if>
+>>     <if test="key != 'title'">
+>>       where title like concat('%', #{word}, '%')
+>>     </if>
+>>   </if>
+>>   order by isbn desc limit #{start}, #{spp}
+>> </select>
+>> <select id="fileInfoList" resultType="FileInfoDto">
+>>   select savefolder, originfile, savefile from file_info where isbn=#{isbn}
+>> </select>
+>> ```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+>## FileDownload
+>- 구현방법
+>>- list.jsp
+>>```html
+>><script type="text/javascript">
+>>$('.filedown).click(function() {
+>>  $(document).find('[name="sfolder"').val$(this).attr('sfolder'));
+>>  $(document).find('[name="ofile"').val$(this).attr('ofile'));
+>>  $(document).find('[name="sfile"').val$(this).attr('sfile'));
+>>  $('#downform').attr('action', '${root}/book/download').attr('method','get').submit();
+>>});
+>></script>
+>>
+>><ul>
+>>  <c:forEach var="file" items="${book.fileInfos}">
+>>  <li>${file.originFile} <a href="#" sfolder="${file.saveFolder}" sfile="${file.saveFile}" ofile="${file.originFile}">다운로드</a>
+>>  </c:forEach>
+>></ul>
+>>```
+>>- servlet-context.xml
+>>```xml
+>><beans:bean id="fileDownLoadView" class="com.user.book.controller.FileDownLoadView" />
+>><beans:bean id="fileViewResolver" class="org.springframework.web.servlet.view.BeanNameViewResolver">
+>>  <beans:property name="order" value="0" />
+>></beans:bean>
+>>```
+>>- BookController.java
+>>```java
+>>@RequestMapping(value="/download", method=RequestMethod.GET)
+>>public ModelAndView downloadFile(@RequestParam("sfolder") String sfolder, @RequestParam("ofile") String ofile, @RequestParam("sfile") String sfile, HttpSession session){
+>>  MemberDto memberDto=(MemberDto) session.getAttribute("userinfo");
+>>  if(memberDto!=null) {
+>>    Map<String, Object> fileInfo=new HashMap<STring, Object>();
+>>    fileInfo.put("sfolder", sfolder);
+>>    fileInfo.put("ofile", ofile);
+>>    fileInfo.put("sfile", sfile);
+>>    return new ModelAndView("fileDownLoadView", "downloadFile", fileInfo);
+>>  } else {
+>>    return new ModelAndView("redirect:/");
+>>  }
+>>}
+>>```
+>>- FileDownLoadView.java
+>>```java
+>>response.setContentType(getContentType());
+>>response.setContentLength((int) file.length());
+>>
+>>String header=request.getHeader("User-Agent");
+>>boolean isIE=header.indexOf("MSIE")>-1 || header.indexOf("Trident")>-1;
+>>String fileName=null;
+>>if(isIE) fileName=URLEncoder.encode(originalFile, "UTF-8").replaceAll("\\+", "%20");
+>>else     fileName=new String(originalFile.getBytes("UTF-8"), "ISO-8859-1");
+>>
+>>response.setHeader("Content-Disposition", "attachment; filename=\""+fileName+"\";");
+>>response.setHeader("Content-Transfer-Encoding", "binary");
+>>OutputStream out=response.getOutputStream();
+>>FileInputStream fis=null;
+>>try {
+>>  fis=new FileInputStream(file);
+>>  FileCopyUtils.copy(fis, out);
+>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+>## Interceptor
+>- HandlerInterceptor
+>>- Controller가 요청을 처리하기 전/후 처리가능
+>>- 로깅, 모니터링 정보 수집, 접근 제어 처리 등 실제 비지니스 로직과는 분리되어 처리해야 하는 기능 처리
+>>- interceptor를 여러 개 설정할 수 있음(순서에 주의해야 함)
+>- HandlerInterceptor 제공 method
+>>- boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+>>>- false를 반환하면 request를 바로 종료
+>>- void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView)
+>>>- Controller 수행 후 호출
+>>- void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex)
+>>>- view를 통해 클라이언트에 응답을 전송한 뒤 실행
+>>>- 예외가 발생해도 실행
+>- Interceptor 호출 순서
+>>```xml
+>><!-- servlet-context.xml -->
+>><mvc:interceptors>
+>>  <mvc:interceptor>
+>>    <mvc:mapping path="/*.html"/>
+>>    <bean class="com.test.hello.aInterceptor"/>
+>>  </mvc:interceptor>
+>>  <mvc:interceptor>
+>>    <mvc:mapping path="/*.html"/>
+>>    <bean class="com.test.hello.bInterceptor"/>
+>>  </mvc:interceptor>
+>>  <mvc:interceptor>
+>>    <mvc:mapping path="/*.html"/>
+>>    <bean class="com.test.hello.cInterceptor"/>
+>>  </mvc:interceptor>
+>></mvc:interceptors>
+>>```
+>>![Interceptor_Order](./imgs/Interceptor_Order.PNG)
+>- 구현방법
+>>- LoggingInterceptor.java
+>>```java
+>>public class LoggingInterceptor implements HandlerInterceptor {
+>>  @Override
+>>  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+>>    System.out.println("preHandle");
+>>    return true;
+>>  }
+>>  @Override
+>>  public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+>>    System.out.println("postHandle");
+>>  }
+>>  @Override
+>>  public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+>>    System.out.println("afterCompletion");
+>>  }
+>>}
+>>```
+>>- servlet-context.xml
+>>```xml
+>><mvc:interceptors>
+>>  <mvc:interceptor>
+>>    <mvc:mapping path="/*.html"/>
+>>    <bean class="com.test.hello.LoggingInterceptor"/>
+>>  </mvc:interceptor>
+>>  <mvc:interceptor>
+>>    <mvc:mapping path="/*.html"/>
+>>    <bean class="com.test.hello.EtcInterceptor"/>
+>>  </mvc:interceptor>
+>></mvc:interceptors>
+>>```
+>- 로그인 세션 체크 예시
+>>- servlet-context.xml
+>>```xml
+>><beans:bean id="confirm" class="com.test.interceptor.ConfirmInterceptor" />
+>>
+>><interceptors>
+>>  <interceptor>
+>>    <mapping path="/user/write" />
+>>    <mapping path="/user/modify" />
+>>    <mapping path="/user/delete" />
+>>    <beans:ref bean="confirm" />
+>>  </interceptor>
+>></interceptors>
+>>```
+>>- ConfirmInterceptor.java
+>>```java
+>>public class ConfirmInterceptor implements HandlerInterceptorAdapter {
+>>  @Override
+>>  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+>>    HttpSession session=request.getSession();
+>>    MemberDto memberDto=(MemberDto) session.getAttribute("userinfo");
+>>    if(memberDto==null) {
+>>      response.sendRedirect(request.getContextPath());
+>>      return false;  
+>>    }
+>>    return true;
+>>  }
+>>}
+>>```
+
