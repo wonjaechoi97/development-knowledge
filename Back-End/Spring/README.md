@@ -34,6 +34,9 @@
   - [FileUpload](#fileupload)
   - [FileDownload](#filedownload)
   - [Interceptor](#interceptor)
+  - [MyBatis](#mybatis)
+    - [Mapper Interface](#mapper-interface)
+    - [MyBatis와 Spring의 연동](#mybatis와-spring의-연동)
 
 <br>
 
@@ -1269,4 +1272,157 @@
 >>  }
 >>}
 >>```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+>## MyBatis
+>- Java Object와 SQL문 사이의 자동 Mapping 기능을 지원하는 ORM Framework
+>>- SQL을 별도의 파일로 분리하여 관리할 수 있음
+>>- SQL 과 Object 사이의 parameter mapping 작업을 자동으로 함
+>>- Hibernate나 JPA처럼 새로운 DB 프로그래밍 패러다임을 배워야 하는 부담없이, 익숙한 SQL을 그대로 이용하면서 JDBC 코드 작성의 불편함을 제거해 주고, 도메인 객체나 VO 객체를 중심으로 개발할 수 있음
+>- 특징
+>>- 쉬운 접근성과 코드의 간결함
+>>>- 가장 간단한 영속성 프레임워크
+>>>- XML형태로 서술된 JDBC코드라 생각할만큼 JDBC의 모든 기능을 대부분 제공
+>>>- 복잡한 JDBC코드를 걷어내어 깔끔한 소스코드를 유지할 수 있음
+>>>- 수동적인 parameter 설정과 Query 결과에 대한 mapping 구문을 제거
+>>- SQL 문과 프로그래밍 코드의 분리
+>>>- SQL 변경이 있을 때마다 자바 코드를 수정하거나 컴파일 하지 않아도 됨
+>>>- SQL 작성과 관리 또는 검토를 DBA와 같은 개발자가 아닌 다른 사람에게 맡길 수 있음
+>- MyBatis 3 의 주요 Component
+>>파일|설명
+>>:--|:--
+>>MyBatis 설정파일 (sqlMapConfig.xml)|db의 접속 주소 정보나 객체의 alias, Mapping 파일의 경로 등의 고정된 환경 정보를 설정
+>>SqlSessionFactoryBuilder|MyBatis 설정 파일을 바탕으로 SqlSessionFactory 를 생성
+>>SqlSessionFactory|SqlSession 을 생성
+>>SqlSession|핵심적인 역할을 하는 Class로 SQL 실행이나 트랜잭션 관리를 실행
+>>&nbsp;|SqlSession 오브젝트는 쓰레드에 안전하지 않으므로 쓰레드마다 필요에 따라 생성해야함
+>>mapping파일 (member.xml)|SQL 문과 ORMapping(객체관계매핑)을 설정
+>- MyBatis-Spring 의 주요 Component
+>>파일|설명
+>>:--|:--
+>>MyBatis 설정파일 (sqlMapConfig.xml)|Dto 객체의 정보를 설정 (Alias)
+>>SqlSessionFactoryBean|MyBatis 설정 파일을 바탕으로 SqlSessionFactory를 생성
+>>&nbsp;|Spring Bean으로 등록해야 함
+>>SqlSessionTemplate|핵심적인 역할을 하는 클래스로서 SQL 실행이나 트랜잭션 관리를 실행
+>>&nbsp;|SqlSession interface를 구현하며, 쓰레드에 안전함
+>>&nbsp;|Spring Bean으로 등록해야 함
+>>mappring 파일 (member.xml)|SQL문과 ORMapping(객체관계매핑)을 설정
+>>Spring Bean 설정파일 (beans.xml)|SqlSessionFactoryBean을 Bean에 등록할 때 DataSource 정보와 MyBatis Config 파일 정보, Mapping 파일의 정보를 함께 설정
+>>&nbsp;|SqlSessionTemplate를 Bean으로 등록
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Mapper Interface
+>- mapping 파일에 기재된 SQL을 호출하기 위한 Interface
+>>- SQL을 호출하는 프로그램을 Type Safe 하게 기술하기 위해 MyBatis 3.x 부터 등장함
+>>- Mapping 파일에 있는 SQL을 java interface를 통해 호출할 수 있도록 함
+>### MyBatis와 Spring의 연동
+>- 개요
+>>- MyBatis를 Standalone 형태로 사용하는 경우, SqlSessionFactory 객체를 직접 사용함
+>>- 스프링을 사용하는 경우 스프링 컨테이너에 MyBatis 관련 빈을 등록하여 사용
+>>- 스프링에서 제공하는 트랜잭션 기능을 사용하면 손쉽게 트랜잭션 처리가능
+>>- 연동하기 위해서 연동 라이브러리가 필요
+>>>```xml
+>>><dependency>
+>>>  <groupId>org.mybatis</groupId>
+>>>  <artifactId>mybatis-spring</artifactId>
+>>>  <version>2.0.2</version>
+>>></dependency>
+>>>```
+>- DataSource
+>>- 스프링에서 DataSource를 관리하므로 MyBatis 설정파일에서는 일부 설정을 생략함
+>>- application-context.xml 에 DataSource 설정
+>>- DataSource는 dataSource 아이디를 가진 빈으로 데이터베이스 연결정보를 가진 객체임
+>>- MyBatis와 스프링을 연동하면 db 설정과 트랜잭션 처리는 스프링에서 관리함
+>>>```xml
+>>><!-- 일반 설정 -->
+>>><bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource" destroy-method="close">
+>>>  <property name="driverClass" value="com.mysql.cj.jdbc.Driver" />
+>>>  <property name="url" value="jdbc:mysql://127.0.0.1:3306/testdb?serverTimezone=UTC&amp;useUniCode=yes&amp;characterEncoding=UTF-8" />
+>>>  <property name="username" value="id" />
+>>>  <property name="password" value="pw" />
+>>></bean>
+>>>
+>>><!-- ConnectionPool 설정 -->
+>>><bean id="dataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+>>>  <property name="jndiName" value="java:comp/env/jdbc/testdb" />
+>>></bean>
+>>>```
+>- 트랜잭션 관리자 설정
+>>- transactionManager 아이디를 가진 빈은 트랜잭션을 관리하는 객체임
+>>- MyBatis는 JDBC를 그대로 사용하기 때문에 DataSourceTransactionManager 타입의 빈을 사용함
+>>- tx:annotation-driven 요소는 트랜잭션 관리방법을 어노테이션으로 선언하도록 설정
+>>- 스프링은 메서드나 클래스에 @Transactional 이 선언되어 있으면 AOP를 통해 트랜잭션을 처리함
+>>>```xml
+>>><!-- 트랜잭션 관리자 설정 -->
+>>><bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+>>>  <property name="dataSource" ref="dataSource" />
+>>></bean>
+>>>
+>>><!-- 어노테이션 기반 트랜잭션 설정 -->
+>>><tx:annotation-driven transaction-manager="transactionManager" />
+>>>```
+>- SqlSessionFactoryBean 설정
+>>- MyBatis 애플리케이션은 SqlSessionFactory 를 중심으로 수행됨
+>>- 스프링에서 SqlSessionFactory 객체를 생성하기 위해서는 SqlSessionFactoryBean 을 빈으로 등록해야 함
+>>- SqlSessionFactoryBean 을 빈으로 등록할 때, 사용할 DataSource 와 mybatis 설정파일 정보가 필요함
+>>>```xml
+>>><bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+>>>  <property name="dataSource" ref="dataSource" />
+>>>  <property name="configLocation" value="classpath:com/user/config/mybatis/mybatis-config.xml" />
+>>>  <property name="mapperLocation">
+>>>    <list>
+>>>      <value>classpath:com/user/config/mybatis/admin_board.xml</value>
+>>>      <value>classpath:com/user/config/mybatis/admin_member.xml</value>
+>>>    </list>
+>>>  </perperty>
+>>></bean>
+>>>```
+>- mapper 빈 등록
+>>- Mapper 인터페이스를 사용하기 위해 스캐너를 사용하여 자동으로 등록하거나, 직접 빈으로 등록
+>>- mapperScannerConfigurer 을 설정하면, Mapper 인터페이스를 자동으로 검색하여 빈으로 등록
+>>>- basePackage 로 패키지는 설정하면, 해당 패키지 하위의 모든 매퍼 인터페이스가 자동으로 등록됨
+>>- MapperFactoryBean 클래스는 매퍼 인터페이스를 직접 등록할 때 사용함
+>>>```xml
+>>><!-- mapper scanner 사용 -->
+>>><bean id="mapperScannerConfigurer" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+>>>  <property name="basePackage" value="com.test.user.mybatis.mapper">
+>>></bean>
+>>><!-- mapper interface 직접 등록 -->
+>>><bean id="authorMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">
+>>>  <property name="mapperInterface" value="com.test.user.mybatis.mapper.AuthorMapper" />
+>>>  <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+>>></bean>
+>>>```
+>- MyBatis Configuration
+>>- 스프링을 사용하면 DB 접속정보 및 Mapper 관련 설정은 스프링 빈으로 등록하여 관리함
+>>- MyBatis 환경설정 파일에는 스프링에서 관리하지 않는 일부 정보만 설정함
+>>```xml
+>><?xml version="1.0" encoding="UTF-8">
+>><!DOCTYPE configuraion PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+>>
+>><configuration>
+>>  <typeAliases>
+>>    <typeAlias alias="UserParameterDto" type="com.test.user.model.UserParameterDto" />
+>>    <typeAlias alias="boardParameterDto" type="com.test.board.model.BoardParameterDto" />
+>>  </typeAliases>
+>></configuration>
+>>```
+>- 데이터 접근 객체 구현
+>>- 데이터 접근객체는 특정한 기술을 사용하여 데이터 저장소에 접근하는 방식을 구현한 객체
+>>- @Repository 는 데이터 접근 객체를 빈으로 등록하기 위해 사용하는 스프링에서 제공하는 어노테이션
+>>- @Autowired 어노테이션을 통해, 사용하려는 Mapper 인터페이스를 데이터 접근객체와 의존관계를 설정함
+
+<br>
+
+[목차로 이동](#목차)
+
+---
 
