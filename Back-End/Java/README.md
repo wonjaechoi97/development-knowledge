@@ -19,6 +19,8 @@
     - [try-finally 보다 try-with-resources를 사용하기](#try-finally-보다-try-with-resources를-사용하기)
   - [모든 객체의 공통 메서드](#모든-객체의-공통-메서드)
     - [equals는 일반 규약을 지켜 재정의하기](#equals는-일반-규약을-지켜-재정의하기)
+    - [equals를 재정의할땐 hashCode도 재정의하기](#equals를-재정의할땐-hashcode도-재정의하기)
+    - [toString을 항상 재정의하기](#tostring을-항상-재정의하기)
 
 <br>
 
@@ -527,7 +529,64 @@
 >- 주의사항
 >>- equals를 재정의할 땐 hashCode도 반드시 재정의
 >>- 입력 타입이 Object가 아니라면 재정의가 아니라 다중정의이므로 주의할것
+>- 구글의 AutoValue 프레임워크를 사용하여 자동으로 생성가능
 
 [목차로 이동](#목차)
 
 <br>
+
+> ### equals를 재정의할땐 hashCode도 재정의하기
+>- equals를 재정의한 클래스라면 hashCode도 재정의해야 함
+>>- equals(Object)가 두 객체를 같다고 판단했다면, 두 객체의 hashCode는 똑같은 값을 반환해야 함
+>>>- 논리적으로 같은 객체는 같은 해시코드를 반환해야 함
+>- 좋은 hashCode를 작성하는 요령
+>>1. int 변수 result를 선언한 후 값 c로 초기화
+>>> c는 해당 객체의 첫 번째 핵심 필드를 단계 2.a 방식으로 계산한 해시코드
+>>>> 핵심 필드란 equals 비교에 사용되는 필드
+>>2. 해당 객체의 나머지 핵심 필드 f 각각에 대해 다음 작업을 수행
+>>>- a. 해당 필드의 해시코드 c를 계산
+>>>>1. 기본 타입 필드라면 Type.hashCode(f)를 수행
+>>>>> Type은 해당 기본 타입의 박싱 클래스
+>>>>2. 참조 타입 필드면서 이 클래스의 equals 메서드가 이 필드의 equals를 재귀적으로 호출해 비교한다면, 이 필드의 hashCode를 재귀적으로 호출   
+>>>> 계산이 복잡해질것 같다면, 이 필드의 표준형을 만들어 그 표준형의 hashCode를 호출   
+>>>> 필드의 값이 null이면 0을 사용
+>>>>3. 필드가 배열이라면 핵심 원소 각각을 별도 필드처럼 다룸   
+>>>> 이상의 규칙을 재귀적으로 적용하여 각 핵심 원소의 해시코드를 계산한 후 단계 2.b 방식으로 갱신함   
+>>>> 배열에 핵심 원소가 없다면 단순한 상수(0)를 사용   
+>>>> 모든 원소가 핵심 원소라면 Arrays.hashCode를 사용함
+>>>- b. 단계 2.a 에서 계산한 해시코드 c로 result를 갱신함
+>>>> result = 31 * result + c;
+>>3. result를 반환
+>>```java
+>>@Override public int hashCode() {
+>>  int result=Short.hashCode(areaCode);
+>>  result=31*result+Short.hashCode(prefix);  
+>>  result=31*result+Short.hashCode(lineNum);
+>>  return result;
+>>}
+>>```
+>- Objects 클래스는 임의의 개수만큼 객체를 받아 해시코드를 계산해주는 정적 메서드인 hash를 제공하지만 속도가 약간 느리므로 성능에 민감하지 않은 상황에서만 사용
+>>```java
+>>@Override
+>>public int hashCode() {
+>>  return Objects.hash(lineNum, prefix, areaCode);
+>>}
+>>```
+>- 구굴의 AutoValue 프레임워크를 사용하여 자동으로 생성가능
+
+[목차로 이동](#목차)
+
+<br>
+
+> ### toString을 항상 재정의하기
+>- toString 을 잘 구현한 클래스는 사용하기 편하고, 그 클래스를 사용한 시스템은 디버깅하기 쉬움
+>>- toString 메서드는 println, printf, 문자열 연결 연산자(+), assert 구문에 넘길 때, 혹은 디버거가 객체를 출력할 때 자동으로 호출함
+>>- 인스턴스를 포함한 객체에서 유용하게 쓰임
+>- toString은 그 객체가 가진 주요 정보 모두를 반환하는 것이 좋음
+>- toString을 구현할 때 반환값의 포맷을 문서화할지 정해야 함
+>>- 입출력에 사용하거나 CSV 파일같은 데이터 객체로 저장할 수도 있음
+>- 포맷의 명시 여부와 관계없는 주의사항
+>>- toString의 의도를 명확히 밝힐것
+>>- toString의 반환값에 포함된 정보를 얻어올 수 있는 API를 제공할 것
+>>> 제공하지 않으면 반환값을 파싱해야 하므로 성능이 나빠지고 시스템에 치명적인 결과를 초래할 수 있음
+>- 구글의 AutoValue 프레임워크를 사용하여 자동으로 생성가능
