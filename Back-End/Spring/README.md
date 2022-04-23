@@ -37,6 +37,8 @@
   - [MyBatis](#mybatis)
     - [Mapper Interface](#mapper-interface)
     - [MyBatis와 Spring의 연동](#mybatis와-spring의-연동)
+  - [REST API](#rest-api)
+  - [SpringBoot](#springboot)
 
 <br>
 
@@ -1426,3 +1428,217 @@
 
 ---
 
+## REST API
+
+> OPEN API
+>- 프로그래밍에서 사용할 수 있도록 개방되어 있는 상태의 인터페이스
+>- 관공서, 공공 데이터 포털, 대형 포털 사이트가 가지고 있는 데이터를 외부 응용 프로그램에서 사용할 수 있도록 OPEN API를 제공하고 있음
+>- OPEN API와 함께 거론되는 기술이 REST이며, 대부분의 OPEN API는 REST 방식으로 지원
+>### REST (Representational State Transfer)
+>- URI는 하나의 고유한 리소스를 대표하도록 설계된다는 개념에 전송방식을 결합하여 원하는 작업을 지정함
+>>- URI + GET/POST/PUT/DELETE
+>- 웹의 장점을 최대한 활용할 수 있는 아키텍처(설계구조)로써 사용
+>>- HTTP URI를 통해 제어할 자원(Resource)를 명시하고 HTTP Method(GET,POST,PUT,DELETE)를 통해 해당 자원을 제어하는 명령을 내리는 방식의 아키텍처
+>- REST의 구성
+>>- 자원 (Resource) - URI
+>>- 행위 (Verb) - HTTP Method
+>>- 표현 (Representations)
+>- 기존 서비스와 REST 서비스의 차이점
+>>- 기존 서비스: 요청에 대한 처리를 한 후 가공된 data를 이용하여 특정 플랫폼에 적합한 형태의 View로 만들어 반환
+>>- REST 서비스: data 처리만 하거나, 처리 후 반환된 data가 있다면 JSON이나 XML 형식으로 전달함
+>>>- View에 대해 신경쓰지 않아도 되는 장점으로 OPEN API에서 많이 사용됨
+>- 특징
+>>- 기존 서비스와 달리 서버는 요청으로 받은 리소스에 대해 순수한 데이터만 전송함
+>>- 기존 GET/POST 에 PUT/DELETE 방식을 추가하여 리소스에 대한 CRUD 처리를 할 수 있음
+>>>- 작업|기존방식|REST방식|비고
+>>>   :--|:--|:--|:--
+>>>   Create(Insert)|POST /write.do?id=abc|POST /blog/abc|글쓰기
+>>>   Read(Select)|GET /view.do?id=abc&no=25|GET /blog/abc/25|글읽기
+>>>   Update(Update)|POST /modify.do?id=abc|PUT /blog/abc|글수정
+>>>   Delete(Delete)|GET /delete.do?id=abc&no=25|DELETE /blog/abc/25|글삭제
+>>- 가장 큰 단점으로 정해진 표준이 없어 암묵적인 표준만 정해져 있음
+>>>- 하이픈(-)은 사용 가능하지만 언더바(_)는 사용하지 않음
+>>>- 대소문자 구분을 하기 때문에 특별한 경우를 제외하고 대문자 사용은 하지않음
+>>>- URI 마지막에 슬래시(/)를 사용하지 않음
+>>>- 슬래시(/)로 계층 관계를 나타냄
+>>>- 확장자가 포함된 파일 이름을 직접 포함시키지 않음
+>>>- URI에 명사를 사용함
+>- 설정법
+>>- Jackson library
+>>>- jackson-databind 라이브러리는 객체를 JSON 포맷의 문자열로 변환시켜 브라우저로 전송
+>>>>- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+>>>- jackson-dataformat-xml 라이브러리는 객체를 xml로 브라우저에 전송
+>>>>- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat=xml
+>>>- pom.xml에 library 추가
+>>>> ```xml
+>>>> <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
+>>>> <dependency>
+>>>>     <groupId>com.fasterxml.jackson.core</groupId>
+>>>>     <artifactId>jackson-core</artifactId>
+>>>>     <version>${jackson-databind-version}</version>
+>>>> </dependency>
+>>>> ```
+>- REST Annotation
+>>- Annotation|Description
+>>   :--|:--
+>>   @RestController|Controller가 REST방식을 처리하기 위한 것임을 명시
+>>   @ResponseBody|JSP 같은 뷰로 전달되는 것이 아니라 데이터 자체를전달
+>>   @PathVariable|URL 경로에 있는 값을 파라미터로 추출
+>>   @CrossOrigin|Ajax의 크로스 도메인 문제를 해결
+>>   @RequestBody|JSON 데이터를 원하는 타입으로 바인딩
+>- 실제 사용 예시
+>>- GET
+>>> ```js
+>>> // list.jsp
+>>> $.ajax({
+>>>   url:'${root}/admin/user',
+>>>   type:'GET',
+>>>   contentType:'application/json;charset=utf-8',
+>>>   dataType:'json',
+>>>   success:function(users) {
+>>>     makeList(users);
+>>>   },
+>>>   error:function(xhr,status,msg) {
+>>>     console.log("상태값:"+status+" Http에러메시지:"+msg);
+>>>   }
+>>> });
+>>> ```
+>>> ```java
+>>> // AdminController.java
+>>> @RequestMapping(value="/user", method=RequestMethod.GET, headers={"Content-type=application/json"})
+>>> public List<MemberDto> userList() {
+>>>   return userService.userList();
+>>> }
+>>> ```
+>>- POST
+>>> ```js
+>>> // list.jsp
+>>> $("#registerBtn").click(function() {
+>>>   let registerinfo=JSON.stringify({
+>>>     "username":$("#username").val(),
+>>>     "userid":$("#userid").val(),
+>>>     "userpwd":$("#userpwd").val(),
+>>>     "email":$("#email").val(),
+>>>     "address":$("#address").val()
+>>>   });
+>>>   $.ajax({
+>>>     url:'${root}/admin/user',
+>>>     type:'POST',
+>>>     contentType:'application/json;charset=utf-8',
+>>>     dataType:'json',
+>>>     success:function(users) {
+>>>       $("#username").val('');
+>>>       $("#userid").val('');
+>>>       $("#userpwd").val('');
+>>>       $("#email").val('');
+>>>       $("#address").val('');
+>>>       $("#userRegModal").modal('hide');
+>>>       makeList(users);
+>>>     },
+>>>     error:function(xhr,status,msg) {
+>>>       console.log("상태값:"+status+" Http에러메시지:"+msg);
+>>>     }
+>>>   });
+>>> });
+>>> ```
+>>> ```java
+>>> // AdminController.java
+>>> @RequestMapping(value="/user", method=RequestMethod.POST, headers={"Content-type=application/json"})
+>>> public List<MemberDto> userRegister(@RequestBody MomberDto memberDto) {
+>>>   userService.userRegister(memberDto);
+>>>   return userService.userList();
+>>> }
+>>> ```
+>>- PUT
+>>> ```js
+>>> // list.jsp
+>>> $(document).on("click", ".modifyBtn", function() {
+>>>   let mid=$(this).parents("tr").attr("data-id");
+>>>   let modifyinfo=JSON.stringify({
+>>>     "userid":mid,
+>>>     "userpwd":$("#userpwd"+mid).val(),
+>>>     "email":$("#email"+mid).val(),
+>>>     "address":$("#address"+mid).val()
+>>>   });
+>>>   $.ajax({
+>>>     url:'${root}/admin/user',
+>>>     type:'PUT',
+>>>     contentType:'application/json;charset=utf-8',
+>>>     dataType:'json',
+>>>     data:modifyinfo,
+>>>     success:function(users) {
+>>>       makeList(users);
+>>>     }
+>>>   });
+>>> });
+>>> ```
+>>> ```java
+>>> // AdminController.java
+>>> @RequestMapping(value="/user", method=RequestMethod.PUT, headers={"Content-type=application/json"})
+>>> public List<MemberDto> userModify(@RequestBody MomberDto memberDto) {
+>>>   userService.userModify(memberDto);
+>>>   return userService.userList();
+>>> }
+>>> ```
+>>- DELETE
+>>> ```js
+>>> // list.jsp
+>>> $(document).on("click", ".delBtn", function() {
+>>>   if(confitm("삭제하시겠습니까?")) {
+>>>     let delid=$(this).parents("tr").attr("data-id");
+>>>     $.ajax({
+>>>       url:'${root}/admin/user'+delid,
+>>>       type:'DELETE',
+>>>       contentType:'application/json;charset=utf-8',
+>>>       dataType:'json',
+>>>       success:function(users) {
+>>>         makeList(users);
+>>>       }
+>>>       error:function(xhr,status,msg) {
+>>>         console.log("상태값:"+status+" Http에러메시지: "+msg);
+>>>       }
+>>>     });
+>>>   }
+>>> });
+>>> ```
+>>> ```java
+>>> // AdminController.java
+>>> @RequestMapping(value="/user", method=RequestMethod.DELETE, headers={"Content-type=application/json"})
+>>> public List<MemberDto> userDelete(@PathVariable("userid") String userid) {
+>>>   userService.userDelete(userid);
+>>>   return userService.userList();
+>>> }
+>>> ```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## SpringBoot
+
+>- 장점
+>>- project에 따라 자주 사용되는 library들이 미리 조합되어 있음
+>>- 복잡한 설정을 자동으로 처리
+>>- 내장 서버를 포함해서 tomcat과 같은 WAS를 추가로 설치하지 않아도 개발 가능
+>>- WAS에 배포하지 않고도 실행할 수 있는 JAR파일로 Web Application을 개발할 수 있음
+>- project 생성 구조 및 주요 구성 폴더/파일
+>>- 프로젝트의 주요 파일|설명
+>>   :--|:--
+>>   src/main/java|java source directory
+>>   HelloSpringBootApplication.java|application을 시작할 수 있는 main mathod 가 존재하는 스프링 구성 메인 클래스
+>>   static|css,js,img 등의 정적 resource directory
+>>   templates|SpringBoot에서 사용가능한 여러가지 View Template(Thymeleaf, Velocity,FreeMarker 등) 위치
+>>   application.properties|application 및 스프링의 설정 등에서 사용할 여러가지 property를 정의한 file
+>>   src/main|jsp등의 리소스 directory
+>- Swagger
+>>- Swagger를 이용한 REST API 문서화
+>>>- 프로젝트 개발시 일반적으로 프론트엔드와 백엔드 개발자가 분리되어 개발함
+>>>- 프론트엔드 개발자의 경우 화면과 로직에 집중하고 백엔드 개발자가 만든 문서 API를 보며 데이터 처리를 함
+>>>- 개발 상황의 변화에 따라 API의 추가 또는 변경할 때 마다 불편함 발생
+>>>- 이 문제를 해결하기 위해 Swagger를 사용
+>>- Swagger란
+>>>- 간단한 설정으로 프로젝트의 API 목록을 웹에서 확인 및 테스트할 수 있게 해주는 라이브러리
+>>>- Controller에 정의되어 있는 모든 URL을 바로 확인할 수 있음
+>>>- API 목록과 API의 명세 및 설명도 볼 수 있으며 API를 직접 테스트도 가능함
