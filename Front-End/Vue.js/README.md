@@ -3,7 +3,9 @@
 ### 참고자료
 
 - 한 권으로 배우는 Vue.js 3
-- [공식가이드](https://vuejs.org/guide/quick-start.html)
+- [Vue3 공식가이드](https://vuejs.org/guide/quick-start.html)
+- [Vue2 공식가이드](https://kr.vuejs.org/v2/guide/)
+- [Vue2 스타일가이드](https://kr.vuejs.org/v2/style-guide/)
 
 ## 목차
 >- [Vue.js 개요](#vuejs-개요)
