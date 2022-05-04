@@ -2,10 +2,13 @@
 
 ### 참고자료
 
-- 한 권으로 배우는 Vue.js 3
-- [Vue3 공식가이드](https://vuejs.org/guide/quick-start.html)
-- [Vue2 공식가이드](https://kr.vuejs.org/v2/guide/)
-- [Vue2 스타일가이드](https://kr.vuejs.org/v2/style-guide/)
+>- 한 권으로 배우는 Vue.js 3
+>- [Vue3 공식가이드](https://vuejs.org/guide/quick-start.html)
+>- [Vue2 공식가이드](https://kr.vuejs.org/v2/guide/)
+>- [Vue2 스타일가이드](https://kr.vuejs.org/v2/style-guide/)
+
+### 공식가이드 실습코드
+>- [시작하기](Vue_1_시작하기.html)
 
 ## 목차
 >- [Vue.js 개요](#vuejs-개요)
@@ -31,7 +34,7 @@
 >- Options API와 컴포지션 API의 존재로 프로젝트 규모에 따라 적절한 방식을 선택할 수 있음
 >>- Options API: 하나의 객체를 하나의 모듈로 만들어 컴포넌트라 칭하는 라이브러리
 >>>- 소규모 혹은 중간급 규모의 웹 애플리케이션을 제작하는데 가장 손쉬운 선택
->>>- 하나의 객체를 변수와 메서드 등과 같은 특정합 옵션 기능으로 나눔
+>>>- 하나의 객체를 변수와 메서드 등과 같은 특정한 옵션 기능으로 나눔
 >>>- 하나의 변수와 연관된 수많은 기능들이 하나의 SFC(Single File Component) 의 이곳 저곳에 산포되어 가독성을 떨어뜨리고 코드 유지비용을 증가시킴
 >>- 컴포지션 API
 >>>- 컴포넌트를 작성할 때 함수 기반의 방법으로 작성
@@ -84,10 +87,9 @@
 >### 설치방법
 >- Direct \<script> include
 >>- download
->>- CDN: \<script src="https://cdn,jsdelivr.net/npm/vue/dist/vue.js">\</s>
+>>- CDN: \<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js">\</s>
 >- NPM
 >- CLI
->- [가이드 링크](https://vuejs.org/guide/quick-start.html)
 
 <br>
 
@@ -125,7 +127,7 @@
 
 >### 선언적 렌더링
 >- Vue는 선언적 렌더링을 지원함
->>- 즉, 변수를 선언하고 값을 넣으면 자동으로 DOM에 업데이트됨
+>>- 즉, 변수를 선언하고 값을 넣으면 자동으로 DOM에 업데이트됨 (반응형)
 >>- Options API를 사용하기 위해선 단순히 data 옵션에 변수를 선언
 >>- 컴포지션 API와 함께 이용하기 위해선 setup 함수를 생성하고 그 안에 일반적인 자바스크립트 변수를 선언하듯이 선언
 >>- 선언된 변수는 템플릿 변수와 결합될 수 있도록 반드시 객체 형식으로 반환되어야 함
