@@ -168,6 +168,8 @@
 
 ## Vue Instance
 >### Vue Instance 생성
+>- 모든 Vue 앱은 Vue 함수로 새 Vue 인스턴스를 만드는 것부터 시작함
+>- Vue 앱은 new Vue를 통해 만들어진 루트 Vue 인스턴스로 구성되며 선택적으로 중첩이 가능하고 재사용 가능한 컴포넌트 트리로 구성됨
 >- Vue Instance 생성 코드
 >>```html
 >><script>
@@ -249,6 +251,7 @@
 >- 원시 HTML
 >>- 이중 중괄호는 HTML이 아닌 일반 텍스트로 데이터를 해석함
 >>- 실제 HTML을 출력하려면 v-html 디렉티브 사용
+>>>- XSS 취약점으로 쉽게 이어질 수 있으므로 사용자가 제공한 콘텐츠에서는 절대 사용하면 안됨
 >>>```html
 >>><div id="app">
 >>>  <div>메세지: {{message}}</div>
