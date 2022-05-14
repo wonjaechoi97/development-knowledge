@@ -32,6 +32,9 @@
 >- [Component간 통신](#component간-통신)
 >- [axios](#axios)
 >- [vue-router](#vue-router)
+>- [Vue CLI](#vue-cli)
+>- [SFC (Single File Component)](#sfc-single-file-component)
+>- [vuex](#vuex)
 
 <br>
 
@@ -1026,6 +1029,70 @@
 >- style
 >>- .vue 파일은 여러 개의 style 블록을 포함할 수 있음
 >>- scoped 속성으로 현재 컴포넌트에서만 사용 가능한 css를 지정 가능
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## vuex
+>- 개요
+>>- Vue.js application에 대한 상태관리패턴 라이브러리
+>>- application 의 모든 컴포넌트들의 중앙 저장소 역할(데이터 관리)
+>>>- emit과 props를 이용하는 데이터전달의 복잡한 단계를 없앨 수 있음
+>- 구성요소
+>>- State : 단일 상태 트리 사용, application 마다 하나의 저장소를 관리 (data)
+>>- Getters : Vue Instance의 Computed 같은 역할, State를 기반으로 계산 (computed)
+>>- Mutations : State의 상태를 변경하는 유일한 방법 (동기 methods)
+>>- Actions : 상태를 변이 시키는 대신 액션으로 변이에 대한 커밋 처리 (비동기 methods)
+>>- Vue CLI 에서의 vuex 기반코드
+>>>```js
+>>>// store.js
+>>>import Vue from "vue";
+>>>import Vuex from "vuex";
+>>>
+>>>Vue.use(Vuex); // Vue Instance에 Vuex 설정
+>>>
+>>>export default new Vuex.Store({
+>>>  state: {},
+>>>  getters: {},
+>>>  mutations: {},
+>>>  actions: {},
+>>>  modules: {},
+>>>});
+>>>
+>>>
+>>>//main.js
+>>>import Vue from "vue";
+>>>import App from "./App.vue";
+>>>import router from "./router";
+>>>import store from "./store";
+>>>
+>>>Vue.config.productionTip = false;
+>>>
+>>>new Vue({
+>>>  router,
+>>>  store,
+>>>  render: (h) => h(App),
+>>>}).$mount("#app");
+>>>```
+>- state
+>>- Store 에서 data 속성의 역할
+>>- application 에서 공유해야 할 data를 관리함
+>>- this.$store.state.data_name 으로 접근함
+>- getters
+>>- 컴포넌트에서 state를 직접 접근하는 코드가 중복될 경우 getters 에 로직을 구성하여 해결
+>- mutations
+>>- state 의 값을 변경할 때 사용
+>>- 각 컴포넌트에서 state의 값을 직접 변경하는것은 권장하지 않음
+>>- state 값의 추적을 위해 동기적 기능에 사용함
+>>- 직접 호출이 불가능하고 this.$store.commit('이름') 으로 호출함
+>- actions
+>>- 비동기 작업의 결과를 적용할 때 사용
+>>- mutations 는 상태 관리를 위해 동기적으로 처리하고 비동기적 처리는 actions가 담당
+>>- actions 는 비동기 로직의 처리가 종료되면 mutations를 호출함
+>>- this.$store.dispatch('이름') 으로 호출함
 
 <br>
 
