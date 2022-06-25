@@ -1,4 +1,4 @@
-# **해당 문서는 리마인드를 위해 요약된 내용이므로 학습용으로 적절치 않음**
+# **리마인드를 위해 학습내용을 요약하는 문서**
 
 # 💻 **Front-End** - **클라이언트** 화면 개발
 >## 📃 [**HTML5**](Front-End/HTML5/README.md) - 웹 페이지 **문서** 담당 **(구조)**
@@ -17,7 +17,7 @@
 >## 📁 [**DataBase**](Back-End/DataBase/README.md) - **자료(data)** 저장
 >## 🐍 [**Spring**](Back-End/Spring/README.md) - Java Application **FrameWork**
 >## ⌨ [**Linux**](Back-End/Linux/README.md) - Open Source OS Kernel
->## 🐍 [**SpringBoot & AWS**](Back-End/SpringBootAWS/README.md)
+>## 🐍 [**SpringBoot & AWS**](Back-End/SpringBootAWS/README.md) - JPA(SpringDataJPA) + SpringSecurity & Auth2.0 + AWS + CI & CD + 무중단 배포
 
 <br>
 
