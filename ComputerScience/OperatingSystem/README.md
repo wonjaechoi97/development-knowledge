@@ -1318,4 +1318,50 @@
 [목차로 이동](#목차)
 
 >### 다중 스레드 응용에서의 교착 상태
+>- 다중 스레드 Pthread 의 POSIX mutex lock 교착 상태
+>>```c
+>>/* thread_one 은 이 함수를 실행 */
+>>void *do_work_one(void *param) {
+>>  pthread_mutex_lock(&first_mutex);
+>>  pthread_mutex_lock(&second_mutex);
+>>  /**
+>>   * Do some work
+>>   */
+>>  pthread_mutex_unlock(&second_mutex);
+>>  pthread_mutex_unlock(&first_mutex);
+>>
+>>  pthread_exit(0);
+>>}
+>>
+>>/* thread_two 는 이 함수를 실행 */
+>>void *do_work_two(void *param) {
+>>  pthread_mutex_lock(&second_mutex);
+>>  pthread_mutex_lock(&first_mutex);
+>>  /**
+>>   * Do some work
+>>   */
+>>  pthread_mutex_unlock(&first_mutex);
+>>  pthread_mutex_unlock(&second_mutex);
+>>
+>>  pthread_exit(0);
+>>}
+>>```
+>>- thread_one 과 thread_two 가 동시에 실행된다면 thread_one이 first_mutex를 획득하고 thread_two가 second_mutex를 획득하게 되어 교착 상태가 발생함
+>>- 특정 스케줄링 상황에서만 발생할 수 있는 교착 상태를 식별하고 검사하는 작업은 어려움
+>- 라이브 락(Livelock)
+>>- 또 다른 형태의 라이브니스 장애로써, 교착 상태 (Deadlock) 와 유사함
+>>- 일반적으로 스레드가 실패한 작업을 동시에 재시도할 때 발생함
+>>- 예시
+>>>1. 두 사람이 복도를 지나가려고 하는 상황에서 한 사람은 왼쪽으로, 다른 사람은 오른쪽으로 서로 진행을 방해
+>>>2. 왼쪽에 있던 사람이 오른쪽으로, 오른쪽에 있던 사람이 왼쪽으로 이동해도 방해하는 상황은 변하지 않음
+>>- 일반적으로 각 스레드가 실패한 행동을 재시도하는 시간을 무작위로 정하면 회피할 수 있음
+>>>- 네트워크 충돌이 발생할 때 Ethernet 네트워크가 취하는 접근법과 동일함
+>>>- 충돌이 발생한 직후에 패킷을 재전송하려고 시도하는 대신, 충돌한 호스트는 재전송을 시도하기 전에 임의의 시간 동안 한 발 뒤로 물러남
+>>- 라이브락은 교착 상태만큼 흔히 일어나지는 않지만 병행 응용 프로그램을 설계하는데 있어 어려운 문제이며 교착 상태와 같이 특정 스케줄링 상황에서만 발생할 수 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 교착 상태 특성
 >- 
