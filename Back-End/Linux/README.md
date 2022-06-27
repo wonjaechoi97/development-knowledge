@@ -705,4 +705,80 @@
 [목차로 이동](#목차)
 
 >### 서비스 관리하기
+>- 시스템 관리자 systemd
+>>- 부팅과정
+>>>1. BIOS/UEFI 가 파티션 정보를 읽고 부트로더 GRUB 실행
+>>>2. GRUB 가 저장 장치에서 커널을 찾아 메모리에 올리고 시스템 제어 권한을 커널에 넘김
+>>>3. 커널은 시스템 초기화 이미지인 initrd (INITial Ram Disk)를 메모리에 마운트
+>>>>- initrd 에는 장치 드라이버를 비롯한 시스템 초기화 도구들이 들어 있음
+>>>4. 커널은 필요한 도구를 실행하고 저장 장치의 진짜 루트 파일 시스템을 마운트
+>>>5. 리눅스 커널은 모든 프로세스의 부모 역할을 하는 PID 1번 프로세스 init을 실행
+>>>6. init은 시스템 초기화를 하여 사용자가 시스템을 사용할 수 있는 환경을 만듬
+>>- $ ls -al /sbin/init
+>>>- /sbin/init 은 systemd의 심벌릭 링크임
+>>>- 최신 우분투는 과거에 사용되던 SystemV 형식의 시스템 초기화 프로세스 init 대신 systemd를 사용함
+>>- systemd는 부팅 프로세스만 처리하지 않고 시스템을 전반적으로 관리하는 만능 도구로 개발됨
+>>>- 예전 시스템과 호환성을 유지하기 위해 /sbin/init 을 유지시킴
+>>>- 시스템 자원을 기능에 따라 유닛이라는 단위로 세분화시켜 관리함
+>>>- 어떤 유닛을 어떤 순서로 활성화할지 결정되면 systemd가 부팅 과정에서 해당 유닛을 활성화시킴
+>>>- 모든 유닛은 유형에 따라 구분하며, 시스템 관리자가 신경 써야 할 주요 유닛으로 부팅 과정에서 활성화시킬 다른 유닛 목록(target), 시스템이 제공할 서비스(service), 서비스에 할당된 네트워크 소켓(socket), 시스템에 설치된 장치(device), 마운트된 파일 시스템(mount), 스왑 공간(swap) 등이 있음
+>- systemctl 로 시스템 상태 조회 하기
+>>- $ systemctl [옵션] [명령]
+>>>- 시스템 상태를 조회하거나 서비스 제어를 위한 systemd 관리 명령
+>>- $ systemctl  list-units
+>>>- 유형별 유닛 목록과 상태를 출력
+>>>>- UNIT
+>>>>>- 유닛이름, 유닛 이름 뒤에 접미사 (automount, device, service 등) 로 유닛의 유형을 짐작할 수 있음
+>>>>- LOAD
+>>>>>- systemd 가 유닛 설정 파일을 정상적으로 읽어 들였는지 표시
+>>>>- ACTIVE
+>>>>>- 유닛이 동작하고 있는지 표시
+>>>>- SUB
+>>>>>- 유닛이 활성 (active) 상태라면 추가 상태 정보를 표시
+>>>>- DESCRIPTION
+>>>>>- 유닛에 대한 세부 설명
+>>- $ systemctl list-units -t [유닛 유형]
+>>>- -t (--type) 으로 유닛 유형에 따라 결과를 필터링 할 수 있음
+>>- $ systemctl list-dependencies
+>>>- 의존 관계에 있는 유닛을 출력
+>>- $ systemctl get-default
+>>>- 현재 기본 target을 출력
+>- systemctl 로 서비스 제어하기
+>>- $ systemctl status [서비스]
+>>>- 서비스의 상태를 출력
+>>- $ systemctl is-active [서비스]
+>>>- 서비스가 현재 활성화 상태인지 확인
+>>- $ systemctl is-enabled
+>>>- 부팅 과정에서 자동으로 활성화되는지 확인
+>>- $ sudo systemctl stop [서비스]
+>>>- 서비스를 중지
+>>- $ sudo systemctl start [서비스]
+>>>- 서비스를 시작
+>>- $ sudo systemctl restart [서비스]
+>>>- 서비스를 다시 시작
+>>- $ sudo systemctl disable [서비스]
+>>>- 부팅 과정에서 서비스가 자동으로 활성화되지 않도록 함
+>>- $ sudo systemctl enable [서비스]
+>>>- 부팅 과정에서 서비스가 자동으로 활성화되도록 함
+>- journalctl 로 systemd 의 로그 정보 조회하기
+>>- 로그 정보
+>>>- systemctl status 로 확인할 수 있는 로그 정보는 systemd-journald 가 제공함
+>>>- systemd-journald 는 부팅부터 발생하는 systemd 의 로그 정보를 이진 자료로 저장함
+>>>- systemd 로그 정보는 이진 자료이기 떄문에 journalctl 명령으로만 확인할 수 있음
+>>- $ journalctl -u [유닛]
+>>>- -u (--unit) 옵션으로 특정 유닛에 대한 로그 정보를 조회
+>>- $ journalctl -eu [유닛]
+>>>- -e (--pager-end) 옵션은 최근 로그 정보부터 화면 스크롤을 시작
+>>- $ journalctl -u [유닛] -p [로그 수준]
+>>>- -p (--priority) 옵션을 붙여 로그 정보를 중요도에 따라 필터링
+>>>- 응급(emerg), 경고(alert), 심각(crit), 오류(err), 주의(warning), 알림(notice), 의미 있는 정보(info), 디버그 정보(debug) 순으로 로그 수준을 지정하여 결과를 확인할 수 있음
+>>- $ journalctl -u [유닛] -S [년]-[월]-[일] [시]:[분]:[초] -U [ yesterday | today | tomorrow ]
+>>>- 날짜나 시간을 기준으로 로그를 필터링
+>>>- -S (--since), -U (--until)
+
+<br>
+
+[목차로 이동](#목차)
+
+>### vi 편집기 익히기
 >- 
