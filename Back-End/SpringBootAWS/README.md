@@ -22,6 +22,13 @@
 >>- [등록 / 수정 / 조회 API 만들기](#등록--수정--조회-api-만들기)
 >>- [JPA Auditing 으로 생성시간 / 수정시간 자동화하기](#jpa-auditing-으로-생성시간--수정시간-자동화하기)
 >- [머스테치로 화면 구성하기](#머스테치로-화면-구성하기)
+>>- [서버 템플릿 엔진과 머스테치 소개](#서버-템플릿-엔진과-머스테치-소개)
+>>- [기본 페이지 만들기](#기본-페이지-만들기)
+>>- [게시글 등록 화면 만들기](#게시글-등록-화면-만들기)
+>>- [전체 조회 화면 만들기](#전체-조회-화면-만들기)
+>>- [게시글 수정, 삭제 화면 만들기](#게시글-수정-삭제-화면-만들기)
+>- [스프링 시큐리티와 OAuth 2.0 으로 로그인 기능 구현하기](#스프링-시큐리티와-oauth-20-으로-로그인-기능-구현하기)
+>>- [스프링 시큐리티와 스프링 시큐리티 Oauth2 클라이언트](#스프링-시큐리티와-스프링-시큐리티-oauth2-클라이언트)
 
 
 <br>
@@ -750,5 +757,550 @@
 
 ## 머스테치로 화면 구성하기
 
->###
+>### 서버 템플릿 엔진과 머스테치 소개
+>- 템플릿 엔진
+>>- 웹 개발에 있어 템플릿 엔진이란, 지정된 템플릿 양식과 데이터가 합쳐져 HTML 문서를 출력하는 소프트웨어를 뜻함
+>>>- JSP, Freemaker 는 서버 템플릿 엔진
+>>>- React, Vue 는 클라이언트 템플릿 엔진
+>>>>- V8 엔진 라이브러리를 이용하여 서버 사이드 렌더링이 지원되나 난이도가 높음
+>- 머스테치
+>>- 수많은 언어를 지원하는 가장 심플한 템플릿 엔진
+>>- 자바 진영의 서버 템플릿 엔진
+>>>- JSP, Velocity
+>>>>- 스프링 부트에서 권장하지 않는 템플릿 엔진
+>>>- Freemaker
+>>>>- 템플릿 엔진으로는 과하게 많은 기능 지원
+>>>>- 높은 자유도로 인해 숙련도가 낮을수록 비즈니스 로직이 추가될 확률이 높음
+>>>- Thymeleaf
+>>>>- 스프링 진영에서 적극적으로 지원하지만 문법이 어려움
+>>>>- 태그 속성 방식으로 템플릿 기능을 사용하는 방식, Vue.js 와 비슷함
+>>- 머스테치 장점
+>>>- 문법이 다른 템플릿 엔진보다 심플
+>>>- 로직 코드를 사용할 수 없어 View와 서버의 역할이 명확하게 분리됨
+>>>- Mustache.js 와 Mustache.java 두 가지가 있어서 하나의 문법으로 클라이언트/서버 템플릿을 모두 사용할 수 있음
+>- 머스테치 플러그인 설치
+>>- 인텔리제이 커뮤니티 버전에서도 사용할 수 있음
+>>- 플러그인 사용시 머스테치의 문법 체크, HTML 문법 지원, 자동완성 등이 지원됨
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 기본 페이지 만들기
+>>- build.gradle 에 의존성 추가
+>>>- implementation('org.springframework.boot:spring-boot-starter-mustache')
+>>- src/main/resources/templates/index.mustache
+>>>```html
+>>><!DOCTYPE HTML>
+>>><html>
+>>><head>
+>>>    <title>스프링부트 웹서비스</title>
+>>>    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+>>></head>
+>>><body>
+>>>    <h1>스프링 부트로 시작하는 웹 서비스</h1>
+>>></body>
+>>></html>
+>>>```
+>>- IndexController
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>@Controller
+>>>public class IndexController {
+>>>    @GetMapping("/")
+>>>    public String index() {
+>>>        return "index";
+>>>    }
+>>>}
+>>>```
+>>>- 머스테치 스타터 의존성 추가로 인해 컨트롤러에서 문자열을 반환할 때 ViewResulver 가 처리함
+>>>>- src/main/resources/templates/index.mustache
+>>- IndexControllerTest
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>import static org.assertj.core.api.Assertions.assertThat;
+>>>import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+>>>
+>>>@RunWith(SpringRunner.class)
+>>>@SpringBootTest(webEnvironment = RANDOM_PORT)
+>>>public class IndexControllerTest {
+>>>    @Autowired
+>>>    private TestRestTemplate restTemplate;
+>>>
+>>>    @Test
+>>>    public void 메인페이지_로딩() {
+>>>        // when
+>>>        String body = this.restTemplate.getForObject("/", String.class);
+>>>
+>>>        // then
+>>>        assertThat(body).contains("스프링 부트로 시작하는 웹 서비스");
+>>>    }
+>>>}
+>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 게시글 등록 화면 만들기
+>>- 머스테치의 레이아웃 방식
+>>>```html
+>>><!-- header.mustache -->
+>>><!DOCTYPE HTML>
+>>><html>
+>>><head>
+>>>    <title>스프링부트 웹서비스</title>
+>>>    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+>>>
+>>>    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+>>></head>
+>>><body>
+>>>
+>>><!-- index.mustache -->
+>>>{{>layout/header}}
+>>>
+>>><h1>스프링부트로 시작하는 웹 서비스 Ver.2</h1>
+>>><div class="col-md-12">
+>>>    <div class="row">
+>>>        <div class="col-md-6">
+>>>            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
+>>>        </div>
+>>>    </div>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>
+>>><!-- footer.mustache -->
+>>><script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+>>><script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+>>>
+>>><!--index.js 추가-->
+>>><script src="/js/app/index.js"></script>
+>>></body>
+>>></html>
+>>>```
+>>>- 스프링 부트는 기본적으로 src/main/resources/static 에 위치한 js, css, image 등 정적 파일은 URL 에서 / 로 설정됨
+>>- IndexController
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>@Controller
+>>>public class IndexController {
+>>>    // ...
+>>>
+>>>    @GetMapping("/posts/svae")
+>>>    public String postsSave() {
+>>>        return "posts-save";
+>>>    }
+>>>}
+>>>```
+>>- posts-save.mustache
+>>>```html
+>>>{{>layout/header}}
+>>>
+>>><h1>게시글 등록</h1>
+>>>
+>>><div class="col-md-12">
+>>>    <div class="col-md-4">
+>>>        <form>
+>>>            <div class="form-group">
+>>>                <label for="title">제목</label>
+>>>                <input type="text" class="form-control" id="title" placeholder="제목을 입력하세요">
+>>>            </div>
+>>>            <div class="form-group">
+>>>                <label for="author"> 작성자 </label>
+>>>                <input type="text" class="form-control" id="author" placeholder="작성자를 입력하세요">
+>>>            </div>
+>>>            <div class="form-group">
+>>>                <label for="content"> 내용 </label>
+>>>                <textarea class="form-control" id="content" placeholder="내용을 입력하세요"></textarea>
+>>>            </div>
+>>>        </form>
+>>>        <a href="/" role="button" class="btn btn-secondary">취소</a>
+>>>        <button type="button" class="btn btn-primary" id="btn-save">등록</button>
+>>>    </div>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>```
+>>- src/main/resources/static/js/app/index.js
+>>>```js
+>>>var main = {
+>>>    init : function () {
+>>>        var _this = this;
+>>>        $('#btn-save').on('click', function () {
+>>>            _this.save();
+>>>        });
+>>>    },
+>>>    save : function () {
+>>>        var data = {
+>>>            title: $('#title').val(),
+>>>            author: $('#author').val(),
+>>>            content: $('#content').val()
+>>>        };
+>>>
+>>>        $.ajax({
+>>>            type: 'POST',
+>>>            url: '/api/v1/posts',
+>>>            dataType: 'json',
+>>>            contentType:'application/json; charset=utf-8',
+>>>            data: JSON.stringify(data)
+>>>        }).done(function() {
+>>>            alert('글이 등록되었습니다.');
+>>>            window.location.href = '/';
+>>>        }).fail(function (error) {
+>>>            alert(JSON.stringify(error));
+>>>        });
+>>>    },
+>>>};
+>>>main.init();
+>>>```
+>>>- 중복된 함수 이름은 자주 발생할 수 있기 때문에 var main 이란 객체를 만들어 index.js 만의 유효범위를 만들어 사용함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 전체 조회 화면 만들기
+>>- index.mustache 구조 변경
+>>>```html
+>>>{{>layout/header}}
+>>>
+>>><h1>스프링부트로 시작하는 웹 서비스 Ver.2</h1>
+>>><div class="col-md-12">
+>>>    <div class="row">
+>>>        <div class="col-md-6">
+>>>            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
+>>>        </div>
+>>>    </div>
+>>></div>
+>>><div class="col-md-12">
+>>>    <div class="row">
+>>>        <div class="col-md-6">
+>>>            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
+>>>        </div>
+>>>    </div>
+>>>    <br>
+>>>    <!-- 목록 출력 영역 -->
+>>>    <table class="table table-horizontal table-bordered">
+>>>        <thead class="thead-strong">
+>>>        <tr>
+>>>            <th>게시글번호</th>
+>>>            <th>제목</th>
+>>>            <th>작성자</th>
+>>>            <th>최종수정일</th>
+>>>        </tr>
+>>>        </thead>
+>>>        <tbody id="tbody">
+>>>        {{#posts}}
+>>>            <tr>
+>>>                <td>{{id}}</td>
+>>>                <td><a href="/posts/update/{{id}}">{{title}}</a></td>
+>>>                <td>{{author}}</td>
+>>>                <td>{{modifiedDate}}</td>
+>>>            </tr>
+>>>        {{/posts}}
+>>>        </tbody>
+>>>    </table>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>```
+>>>- {{#posts}}
+>>>>- posts 라는 List를 순회
+>>- PostsRepository 인터페이스에 쿼리 추가
+>>>```java
+>>>package org.example.springboot.domain.posts;
+>>>
+>>>public interface PostsRepository extends JpaRepository<Posts, Long> {
+>>>    @Query("SELECT p FROM Posts p ORDER BY p.id DESC")
+>>>    List<Posts> findAllDesc();
+>>>}
+>>>```
+>>>- 규모 있는 프로젝트에서 데이터 조회는 Entity 클래스만으로 처리하기 어려워 조회용 프레임워크를 추가로 사용함
+>>>>- 대표적으로 Querydsl, jooq, MyBatis 등이 있으나 Querydsl이 많이 사용됨
+>>- PostsService 코드 추가
+>>>```java
+>>>package org.example.springboot.PostsService;
+>>>
+>>>@RequiredArgsConstructor
+>>>@Service
+>>>public class PostsService {
+>>>    private final PostsRepository postsRepository;
+>>>
+>>>    //...
+>>>
+>>>    @Transactional(readOnly = true)
+>>>    public List<PostsListResponseDto> findAllDesc() {
+>>>        return postsRepository.findAllDesc().stream()
+>>>                .map(PostsListResponseDto::new)
+>>>                .collect(Collectors.toList());
+>>>    }
+>>>}
+>>>```
+>>>- .map(PostsListResponseDto::new)
+>>>>- .map(posts -> new PostsListResponsesDto(posts)) 와 같음
+>>>>- postsRepository 결과로 넘어온 Posts의 Stream을 map을 통해 PostsListResponseDto 변환 -> List로 반환하는 메서드
+>>- PostsListResponseDto
+>>>```java
+>>>package org.example.springboot.web.dto;
+>>>
+>>>@Getter
+>>>public class PostsListResponseDto {
+>>>    private Long id;
+>>>    private String title;
+>>>    private String author;
+>>>    private LocalDateTime modifiedDate;
+>>>
+>>>    public PostsListResponseDto(Posts entity) {
+>>>        this.id = entity.getId();
+>>>        this.title = entity.getTitle();
+>>>        this.author = entity.getAuthor();
+>>>        this.modifiedDate = entity.getModifiedDate();
+>>>    }
+>>>}
+>>>```
+>>- IndexController 수정
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>@RequiredArgsConstructor
+>>>@Controller
+>>>public class IndexController {
+>>>    private final PostsService postsService;
+>>>
+>>>    @GetMapping("/")
+>>>    public String index(Model model) {
+>>>        model.addAttribute("posts", postsService.findAllDesc());
+>>>        return "index";
+>>>    }
+>>>
+>>>    //...
+>>>}
+>>>```
+>>>- Model
+>>>>- 서버 템플릿 엔진에서 사용할 수 있는 객체를 저장
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 게시글 수정, 삭제 화면 만들기
+>>- PostsApiController
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>@RequiredArgsConstructor
+>>>@RestController
+>>>public class PostsApiController {
+>>>    private final PostsService postsService;
+>>>
+>>>    // ...
+>>>
+>>>    @PutMapping("/api/v1/posts/{id}")
+>>>    public Long update(@PathVariable Long id, @RequestBody PostsUpdateRequestDto requestDto) {
+>>>        return postsService.update(id, requestDto);
+>>>    }
+>>>
+>>>    // ...
+>>>
+>>>    @DeleteMapping("/api/v1/posts/{id}")
+>>>    public Long delete(@PathVariable Long id) {
+>>>        postsService.delete(id);
+>>>        return id;
+>>>    }
+>>>}
+>>>```
+>>- posts-update.mustache
+>>>```java
+>>>{{>layout/header}}
+>>>
+>>><h1>게시글 수정</h1>
+>>>
+>>><div class="col-md-12">
+>>>    <div class="col-md-4">
+>>>        <form>
+>>>            <div class="form-group">
+>>>                <label for="title">글 번호</label>
+>>>                <input type="text" class="form-control" id="id" value="{{post.id}}" readonly>
+>>>            </div>
+>>>            <div class="form-group">
+>>>                <label for="title">제목</label>
+>>>                <input type="text" class="form-control" id="title" value="{{post.title}}">
+>>>            </div>
+>>>            <div class="form-group">
+>>>                <label for="author"> 작성자 </label>
+>>>                <input type="text" class="form-control" id="author" value="{{post.author}}" readonly>
+>>>            </div>
+>>>            <div class="form-group">
+>>>                <label for="content"> 내용 </label>
+>>>                <textarea class="form-control" id="content">{{post.content}}</textarea>
+>>>            </div>
+>>>        </form>
+>>>        <a href="/" role="button" class="btn btn-secondary">취소</a>
+>>>        <button type="button" class="btn btn-primary" id="btn-update">수정 완료</button>
+>>>        <button type="button" class="btn btn-danger" id="btn-delete">삭제</button>
+>>>    </div>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>```
+>>- index.js
+>>>```js
+>>>var main = {
+>>>    init : function () {
+>>>        var _this = this;
+>>>        // ...
+>>>
+>>>        $('#btn-update').on('click', function () {
+>>>            _this.update();
+>>>        });
+>>>
+>>>        $('#btn-delete').on('click', function () {
+>>>            _this.delete();
+>>>        });
+>>>    },
+>>>    save : function () {
+>>>        // ...
+>>>    },
+>>>    update : function () {
+>>>        var data = {
+>>>            title: $('#title').val(),
+>>>            content: $('#content').val()
+>>>        };
+>>>
+>>>        var id = $('#id').val();
+>>>
+>>>        $.ajax({
+>>>            type: 'PUT',
+>>>            url: '/api/v1/posts/'+id,
+>>>            dataType: 'json',
+>>>            contentType:'application/json; charset=utf-8',
+>>>            data: JSON.stringify(data)
+>>>        }).done(function() {
+>>>            alert('글이 수정되었습니다.');
+>>>            window.location.href = '/';
+>>>        }).fail(function (error) {
+>>>            alert(JSON.stringify(error));
+>>>        });
+>>>    },
+>>>    delete : function () {
+>>>        var id = $('#id').val();
+>>>
+>>>        $.ajax({
+>>>            type: 'DELETE',
+>>>            url: '/api/v1/posts/'+id,
+>>>            dataType: 'json',
+>>>            contentType:'application/json; charset=utf-8'
+>>>        }).done(function() {
+>>>            alert('글이 삭제되었습니다.');
+>>>            window.location.href = '/';
+>>>        }).fail(function (error) {
+>>>            alert(JSON.stringify(error));
+>>>        });
+>>>    }
+>>>};
+>>>main.init();
+>>>```
+>>- index.mustache
+>>>```html
+>>>{{>layout/header}}
+>>>
+>>><h1>스프링부트로 시작하는 웹 서비스 Ver.2</h1>
+>>><div class="col-md-12">
+>>>    <div class="row">
+>>>        <div class="col-md-6">
+>>>            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
+>>>        </div>
+>>>    </div>
+>>>    <br>
+>>>    <!-- 목록 출력 영역 -->
+>>>    <table class="table table-horizontal table-bordered">
+>>>        <thead class="thead-strong">
+>>>        <tr>
+>>>            <th>게시글번호</th>
+>>>            <th>제목</th>
+>>>            <th>작성자</th>
+>>>            <th>최종수정일</th>
+>>>        </tr>
+>>>        </thead>
+>>>        <tbody id="tbody">
+>>>        {{#posts}}
+>>>            <tr>
+>>>                <td>{{id}}</td>
+>>>                <td><a href="/posts/update/{{id}}">{{title}}</a></td>
+>>>                <td>{{author}}</td>
+>>>                <td>{{modifiedDate}}</td>
+>>>            </tr>
+>>>        {{/posts}}
+>>>        </tbody>
+>>>    </table>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>```
+>>- IndexController
+>>>```java
+>>>package org.example.springboot.web;
+>>>
+>>>@RequiredArgsConstructor
+>>>@Controller
+>>>public class IndexController {
+>>>    private final PostsService postsService;
+>>>
+>>>    // ...
+>>>
+>>>    @GetMapping("/posts/update/{id}")
+>>>    public String postsUpdate(@PathVariable Long id, Model model) {
+>>>        PostsResponseDto dto = postsService.findById(id);
+>>>        model.addAttribute("post", dto);
+>>>
+>>>        return "posts-update";
+>>>    }
+>>>}
+>>>```
+>>- PostsService
+>>>```java
+>>>package org.example.springboot.PostsService;
+>>>
+>>>@RequiredArgsConstructor
+>>>@Service
+>>>public class PostsService {
+>>>    private final PostsRepository postsRepository;
+>>>
+>>>    // ...
+>>>
+>>>    @Transactional
+>>>    public Long update(Long id, PostsUpdateRequestDto requestDto) {
+>>>        Posts posts = postsRepository.findById(id)
+>>>                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다. id=" + id));
+>>>
+>>>        posts.update(requestDto.getTitle(), requestDto.getContent());
+>>>
+>>>        return id;
+>>>    }
+>>>
+>>>    // ...
+>>>
+>>>    @Transactional
+>>>    public void delete(Long id) {
+>>>        Posts posts = postsRepository.findById(id)
+>>>                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다. id=" + id));
+>>>
+>>>        postsRepository.delete(posts);
+>>>    }
+>>>}
+>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 스프링 시큐리티와 OAuth 2.0 으로 로그인 기능 구현하기
+
+>### 스프링 시큐리티와 스프링 시큐리티 Oauth2 클라이언트
 >- 
