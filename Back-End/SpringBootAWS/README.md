@@ -29,6 +29,14 @@
 >>- [게시글 수정, 삭제 화면 만들기](#게시글-수정-삭제-화면-만들기)
 >- [스프링 시큐리티와 OAuth 2.0 으로 로그인 기능 구현하기](#스프링-시큐리티와-oauth-20-으로-로그인-기능-구현하기)
 >>- [스프링 시큐리티와 스프링 시큐리티 Oauth2 클라이언트](#스프링-시큐리티와-스프링-시큐리티-oauth2-클라이언트)
+>>- [구글 서비스 등록](#구글-서비스-등록)
+>>- [구글 로그인 연동하기](#구글-로그인-연동하기)
+>>- [어노테이션 기반으로 개선하기](#어노테이션-기반으로-개선하기)
+>>- [세션 저장소로 데이터베이스 사용하기](#세션-저장소로-데이터베이스-사용하기)
+>>- [네이버 로그인](#네이버-로그인)
+>>- [기존 테스트에 시큐리티 적용하기](#기존-테스트에-시큐리티-적용하기)
+>- [AWS 서버 환경을 만들어보자 - AWS EC2](#aws-서버-환경을-만들어보자---aws-ec2)
+
 
 
 <br>
@@ -1303,4 +1311,649 @@
 ## 스프링 시큐리티와 OAuth 2.0 으로 로그인 기능 구현하기
 
 >### 스프링 시큐리티와 스프링 시큐리티 Oauth2 클라이언트
->- 
+>- 스프링 시큐리티 개요
+>>- 막강한 인증 (Authentication) 과 인가 (Authorization, 혹은 권한 부여) 기능을 가진 프레임워크
+>>- 사실상 스프링 기반의 애플리케이션에서의 보안을 위한 표준
+>>- 인터셉터, 필터 기반의 보안 기능을 구현하는 것보다 스프링 시큐리티를 통해 구현하는 것을 적극적으로 권장
+>- 많은 서비스에서 소셜 로그인 기능을 사용하는 이유
+>>- 직접 로그인을 구현하면 구현해야하는 것들
+>>>- 로그인시 보안
+>>>- 회원가입 시 이메일 혹은 전화번호 인증
+>>>- 비밀번호 찾기
+>>>- 비밀번호 변경
+>>>- 회원정보 변경
+>>- OAuth 로그인 구현 시 소셜에 맡기면 되므로 서비스 개발에 집중할 수 있음
+>- 스프링 부트 1.5 VS 스프링 부트 2.0
+>>- 스프링 부트 1.5 에서의 OAuth2 연동 방법이 스프링 부트 2.0에서는 크게 변경되었으나 spring-security-oauth2-autoconfigure 라이브러리덕에 설정 방법에는 크게 차이가 없음
+>>- 기존에 안전하게 작동하던 코드인 1.5버전을 사용하는 것이 확실하므로 많이 사용
+>>- 신규 기능은 부트 2.0 버전 라이브러리에서만 추가되고 starter 라이브러리가 출시됨
+>>- 기존 방식은 확장 포인트가 적절하게 오픈되어 있지 않아 직접 상속하거나 오버라이딩 해야하지만 신규 라이브러리의 경우 확장 포인트를 고려하여 설계되어 있음
+>>- 부트 1.5 application.properties에는 url 주소를 모두 명시, 부트 2.0 에는 client 인증 정보만 입력하고 CommonOAuth2Provider라는 enum 을 따로 작성
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 구글 서비스 등록
+>- 구글 서비스에서 신규 서비스 생성
+>>1. 구글 클라우드 플랫폼 ([링크](https://console.cloud.google.com)) 에서 상단의 [프로젝트 선택] 을 클릭하고 새 프로젝트를 생성
+>>2. 생성된 프로젝트를 선택하고 왼쪽 메뉴 탭에서 API 및 서비스 카테고리로 이동
+>>3. 사용자 인증 정보를 클릭하고 사용자 인증 정보 만들기 버튼 클릭 후 OAuth 클라이언트 ID 선택
+>>4. 동의 화면 구성에서 동의를 요청하는 앱의 이름과 Google API의 범위에서 email, profile, openid 를 선택 후 저장
+>>5. OAuth 클라이언트 ID 만들기 화면에서 웹 애플리케이션 유형을 선택하고 승인된 리디렉션 URI 항목에 http://localhost:8080/login/oauth2/code/google 입력 후 생성
+>>>- 스프링 부트 2버전의 시큐리티에서는 기본적으로 {도메인}/login/oauth2/code/{소셜서비스코드}로 리다이렉트 URL을 지원하므로 따로 Controller를 만들 필요가 없음
+>>6. 생성된 애플리케이션에서 클라이언트 ID와 클라이언트 보안 비밀을 프로젝트에 설정
+>- 프로젝트에 내용 추가
+>>- src/main/resources/application-oauth.properties 추가 생성
+>>>```properties
+>>>spring.security.oauth2.client.registration.google.client-id=클라이언트 ID
+>>>spring.security.oauth2.client.registration.google.client-secret= 클라이언트 보안 비밀
+>>>spring.security.oauth2.client.registration.google.scope=profile,email
+>>>```
+>>>- scope를 설정하는 이유는 openid 가 포함되어 있으면 OpenId Provider인 서비스와 그렇지 않은 서비스로 나눠서 각각 OAuth2Service를 만들어야하기 때문에 일부러 제외하고 등록
+>>>- 해당 내용은 외부에 노출될 경우 개인정보 취약점이 될 수 있으므로 .gitignore 등록을 필수로 해야함
+>>- src/main/resources/application.properties 내용 추가
+>>>```properties
+>>>spring.profiles.include=oauth
+>>>```
+>>>- 스프링 부트에서는 application-xxx.properties로 만들면 xxx 이름의 profile이 생성되어 이를 통해 관리할 수 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 구글 로그인 연동하기
+>- User Entity
+>>- src/main/java/.../springboot/domain/user/User.java
+>>>```java
+>>>@Getter
+>>>@NoArgsConstructor
+>>>@Entity
+>>>public class User extends BaseTimeEntity {
+>>>    @Id
+>>>    @GeneratedValue(strategy = GenerationType.IDENTITY)
+>>>    private Long id;
+>>>
+>>>    @Column(nullable = false)
+>>>    private String name;
+>>>
+>>>    @Column(nullable = false)
+>>>    private String email;
+>>>
+>>>    @Column
+>>>    private String picture;
+>>>
+>>>    @Enumerated(EnumType.STRING)
+>>>    @Column(nullable = false)
+>>>    private Role role;
+>>>
+>>>    @Builder
+>>>    public User(String name, String email, String picture, Role role) {
+>>>        this.name = name;
+>>>        this.email = email;
+>>>        this.picture = picture;
+>>>        this.role = role;
+>>>    }
+>>>
+>>>    public User update(String name, String picture) {
+>>>        this.name = name;
+>>>        this.picture = picture;
+>>>
+>>>        return this;
+>>>    }
+>>>
+>>>    public String getRoleKey() {
+>>>        return this.role.getKey();
+>>>    }
+>>>}
+>>>```
+>>- src/main/java/.../springboot/domain/user/Role.java
+>>>```java
+>>>@Getter
+>>>@RequiredArgsConstructor
+>>>public enum Role {
+>>>    GUEST("ROLE_GUEST", "손님"),
+>>>    USER("ROLE_USER", "일반 사용자");
+>>>
+>>>    private final String key;
+>>>    private final String title;
+>>>}
+>>>```
+>>>- 스프링 시큐리티에서는 권한 코드에 항상 ROLE_ 이 앞에 있어야함
+>>- src/main/java/.../springboot/domain/user/UserRepository.java
+>>>```java
+>>>public interface UserRepository extends JpaRepository<User, Long> {
+>>>    Optional<User> findByEmail(String email);
+>>>}
+>>>```
+>- 스프링 시큐리티 설정
+>>- build.gradle 에 의존성 추가
+>>>```gradle
+>>>implementation('org.springframework.boot:spring-boot-starter-oauth2-client')
+>>>```
+>>- src/main/java/.../springboot/config/auth 패키지 생성
+>>>- 시큐리티 관련 클래스는 모두 이곳에서 관리
+>>- src/main/java/.../springboot/config/auth/SecurityConfig.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@EnableWebSecurity
+>>>public class SecurityConfig extends WebSecurityConfigurerAdapter {
+>>>    private final CustomOAuth2UserService customOAuth2UserService;
+>>>
+>>>    @Override
+>>>    protected void configure(HttpSecurity http) throws Exception {
+>>>        http
+>>>                .csrf().disable()
+>>>                .headers().frameOptions().disable()
+>>>                .and()
+>>>                    .authorizeRequests()
+>>>                    .antMatchers("/", "/css/**", "/images/**", "/js/**", "/h2-console/**").permitAll()
+>>>                    .antMatchers("/api/v1/**").hasRole(Role.USER.name())
+>>>                    .anyRequest().authenticated()
+>>>                .and()
+>>>                    .logout()
+>>>                        .logoutSuccessUrl("/")
+>>>                .and()
+>>>                    .oauth2Login()
+>>>                        .userInfoEndpoint()
+>>>                            .userService(customOAuth2UserService);
+>>>    }
+>>>}
+>>>```
+>>>- @EnableWebSecurity
+>>>>- Spring Security 설정들을 활성화함
+>>>- csrf().disable().headers().frameOptions().disable()
+>>>>- h2-console 화면을 사용하기 위해 해당 옵션들을 disable
+>>>- authorizeRequests
+>>>>- URL 별 권한 관리를 설정하는 옵션의 시작점으로 이것이 선언되어야 antMatchers 옵션을 사용할 수 있음
+>>>- antMatchers
+>>>>- 권한 관리 대상을 지정하는 옵션으로 URL, HTTP 메서드별로 관리할 수 있음
+>>>>- "/" 등 지정된 URL은 전체 열람 권한 지정, "/api/v1/**" 주소를 가진 API는 USER 권한을 가진 사람만 가능
+>>>- anyRequest
+>>>>- 설정된 값 이외 나머지 URL들은 authenticated(), 즉 인증된 (로그인한) 사용자들에게만 허용
+>>- src/main/java/.../springboot/config/auth/CustomOAuth2UserService.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@Service
+>>>public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+>>>    private final UserRepository userRepository;
+>>>    private final HttpSession httpSession;
+>>>
+>>>    @Override
+>>>    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+>>>        OAuth2UserService delegate = new DefaultOAuth2UserService();
+>>>        OAuth2User oAuth2User = delegate.loadUser(userRequest);
+>>>
+>>>        String registrationId = userRequest.getClientRegistration().getRegistrationId();
+>>>        String userNameAttributeName = userRequest.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUserNameAttributeName();
+>>>
+>>>        OAuthAttributes attributes = OAuthAttributes.of(registrationId, userNameAttributeName, oAuth2User.getAttributes());
+>>>
+>>>        User user = saveOrUpdate(attributes);
+>>>        httpSession.setAttribute("user", new SessionUser(user));
+>>>
+>>>        return new DefaultOAuth2User(
+>>>                Collections.singleton(new SimpleGrantedAuthority(user.getRoleKey())),
+>>>                attributes.getAttributes(),
+>>>                attributes.getNameAttributeKey());
+>>>    }
+>>>
+>>>    private User saveOrUpdate(OAuthAttributes attributes) {
+>>>        User user = userRepository.findByEmail(attributes.getEmail())
+>>>                .map(entity -> entity.update(attributes.getName(), attributes.getPicture()))
+>>>                .orElse(attributes.toEntity());
+>>>
+>>>        return userRepository.save(user);
+>>>    }
+>>>}
+>>>```
+>>- src/main/java/.../springboot/config/auth/dto/OAuthAttributes.java
+>>>```java
+>>>@Getter
+>>>public class OAuthAttributes {
+>>>    private Map<String, Object> attributes;
+>>>    private String nameAttributeKey;
+>>>    private String name;
+>>>    private String email;
+>>>    private String picture;
+>>>
+>>>    @Builder
+>>>    public OAuthAttributes(Map<String, Object> attributes, String nameAttributeKey, String name, String email, String picture) {
+>>>        this.attributes = attributes;
+>>>        this.nameAttributeKey = nameAttributeKey;
+>>>        this.name = name;
+>>>        this.email = email;
+>>>        this.picture = picture;
+>>>    }
+>>>
+>>>    public static OAuthAttributes of(String registrationId, String userNameAttributeName, Map<String, Object> attributes) {
+>>>        if("naver".equals(registrationId)) {
+>>>            return ofNaver("id", attributes);
+>>>        }
+>>>
+>>>        return ofGoogle(userNameAttributeName, attributes);
+>>>    }
+>>>
+>>>
+>>>    private static OAuthAttributes ofGoogle(String userNameAttributeName, Map<String, Object> attributes) {
+>>>        return OAuthAttributes.builder()
+>>>                .name((String) attributes.get("name"))
+>>>                .email((String) attributes.get("email"))
+>>>                .picture((String) attributes.get("picture"))
+>>>                .attributes(attributes)
+>>>                .nameAttributeKey(userNameAttributeName)
+>>>                .build();
+>>>    }
+>>>
+>>>    private static OAuthAttributes ofNaver(String userNameAttributeName, Map<String, Object> attributes) {
+>>>        Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+>>>
+>>>        return OAuthAttributes.builder()
+>>>                .name((String) response.get("name"))
+>>>                .email((String) response.get("email"))
+>>>                .picture((String) response.get("profile_image"))
+>>>                .attributes(response)
+>>>                .nameAttributeKey(userNameAttributeName)
+>>>                .build();
+>>>    }
+>>>
+>>>    public User toEntity() {
+>>>        return User.builder()
+>>>                .name(name)
+>>>                .email(email)
+>>>                .picture(picture)
+>>>                .role(Role.GUEST)
+>>>                .build();
+>>>    }
+>>>}
+>>>```
+>>- src/main/java/.../springboot/config/auth/dto/SessionUser.java
+>>>```java
+>>>@Getter
+>>>public class SessionUser implements Serializable {
+>>>    private String name;
+>>>    private String email;
+>>>    private String picture;
+>>>
+>>>    public SessionUser(User user) {
+>>>        this.name = user.getName();
+>>>        this.email = user.getEmail();
+>>>        this.picture = user.getPicture();
+>>>    }
+>>>}
+>>>```
+>- 로그인 테스트
+>>- index.mustache
+>>>```html
+>>>{{>layout/header}}
+>>>
+>>><h1>스프링부트로 시작하는 웹 서비스 Ver.2</h1>
+>>><div class="col-md-12">
+>>>    <div class="row">
+>>>        <div class="col-md-6">
+>>>            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
+>>>            {{#loginUserName}}
+>>>                Logged in as: <span id="user">{{loginUserName}}</span>
+>>>                <a href="/logout" class="btn btn-info active" role="button">Logout</a>
+>>>            {{/loginUserName}}
+>>>            {{^loginUserName}}
+>>>                <a href="/oauth2/authorization/google" class="btn btn-success active" role="button">Google Login</a>
+>>>                <a href="/oauth2/authorization/naver" class="btn btn-secondary active" role="button">Naver Login</a>
+>>>            {{/loginUserName}}
+>>>        </div>
+>>>    </div>
+>>>    <br>
+>>>    <!-- 목록 출력 영역 -->
+>>>    <table class="table table-horizontal table-bordered">
+>>>        <thead class="thead-strong">
+>>>        <tr>
+>>>            <th>게시글번호</th>
+>>>            <th>제목</th>
+>>>            <th>작성자</th>
+>>>            <th>최종수정일</th>
+>>>        </tr>
+>>>        </thead>
+>>>        <tbody id="tbody">
+>>>        {{#posts}}
+>>>            <tr>
+>>>                <td>{{id}}</td>
+>>>                <td><a href="/posts/update/{{id}}">{{title}}</a></td>
+>>>                <td>{{author}}</td>
+>>>                <td>{{modifiedDate}}</td>
+>>>            </tr>
+>>>        {{/posts}}
+>>>        </tbody>
+>>>    </table>
+>>></div>
+>>>
+>>>{{>layout/footer}}
+>>>```
+>>- src/main/java/.../springboot/web/IndexController.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@Controller
+>>>public class IndexController {
+>>>    private final PostsService postsService;
+>>>    private final HttpSession httpSession;
+>>>
+>>>    @GetMapping("/")
+>>>    public String index(Model model, @LoginUser SessionUser user) {
+>>>        model.addAttribute("posts", postsService.findAllDesc());
+>>>
+>>>        if(user != null) {
+>>>            model.addAttribute("loginUserName", user.getName());
+>>>        }
+>>>        return "index";
+>>>    }
+>>>
+>>>    // ...
+>>>}
+>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 어노테이션 기반으로 개선하기
+>- 세션값을 가져오는 부분을 메서드 인자로 세션값을 바로 받을 수 있도록 개선
+>>- src/main/java/.../springboot/config/auth/LoginUser.java
+>>>```java
+>>>@Target(ElementType.PARAMETER)
+>>>@Retention(RetentionPolicy.RUNTIME)
+>>>public @interface LoginUser {
+>>>}
+>>>```
+>>>- @Target(ElementType.PARAMETER)
+>>>>- 해당 어노테이션이 생성될 수 있는 위치를 지정, PARAMETER로 지정했으므로 메서드의 파라미터로 선언된 객체에서만 사용할 수 있음
+>>>- @interface
+>>>>- 해당 파일은 어노테이션 클래스로 지정하여 LoginUser 라는 이름을 가진 어노테이션이 생성된것과 같음
+>>- src/main/java/.../springboot/config/auth/LoginUserArgumentResolver.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@Component
+>>>public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
+>>>    private final HttpSession httpSession;
+>>>
+>>>    @Override
+>>>    public boolean supportsParameter(MethodParameter parameter) {
+>>>        boolean isLoginUserAnnotation = parameter.getParameterAnnotation(LoginUser.class) != null;
+>>>        boolean isUserClass = SessionUser.class.equals(parameter.getParameterType());
+>>>        return isLoginUserAnnotation && isUserClass;
+>>>    }
+>>>
+>>>    @Override
+>>>    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
+>>>        return httpSession.getAttribute("user");
+>>>    }
+>>>}
+>>>```
+>>>- supportsParameter()
+>>>>- 컨트롤러 메서드의 특정 파라미터를 지원하는지 판단
+>>>>- 해당 경우에는 파라미터에 @LoginUser 어노테이션이 붙어 있고, 파라미터 클래스 타입이 SessionUser.class인 경우 true 반환
+>>>- resolveArgument()
+>>>>- 파라미터에 전달할 객체를 생성
+>>>>- 해당 경우에는 세션에서 객체를 가져옴
+>>- src/main/java/.../springboot/config/WebConfig.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@Configuration
+>>>public class WebConfig implements WebMvcConfigurer {
+>>>    private final LoginUserArgumentResolver loginUserArgumentResolver;
+>>>
+>>>    @Override
+>>>    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+>>>        argumentResolvers.add(loginUserArgumentResolver);
+>>>    }
+>>>}
+>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 세션 저장소로 데이터베이스 사용하기
+>- build.gradle 에 spring-session-jdbc 의존성 추가
+>>```gradle
+>>implementation('org.springframework.session:spring-session-jdbc')
+>>```
+>- application.properties 설정 추가
+>>```properties
+>>spring.session.store-type=jdbc
+>>```
+>- 세션테이블
+>>- http://localhost:8080/h2-console 로 접속시 SPRING_SESSION, SPRING_SESSION_ATTRIBUTES 두 개의 세션을 위한 테이블이 JPA에 의해 자동으로 생섣되어 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 네이버 로그인
+>- 네이버 API 등록 순서
+>>1. https://developers.naver.com/apps/#/register?api=nvlogin 접속
+>>2. 애플리케이션 이름과 사용 API에 네이버 아이디로 로그인으로 선택, 제공 정보로 회원이름, 이메일, 프로필 사진 클릭
+>>3. 로그인 오픈 API 서비스 환경에서 PC 웹, 서비스 URL 로 http://localhost:8080/ , 네이버아이디로 로그인 CallbackURL로 http://localhost:8080/login/oauth2/code/naver 입력
+>>4. 등록된 네이버 서비스에서 애플리케이션 정보의 Client ID와 Cliend Secret 을 사용하여 로그인 구현
+>>>- application-oauth.properties
+>>>>```properties
+>>>># ...
+>>>>
+>>>># registraion
+>>>>spring.security.oauth2.client.registration.naver.client-id=클라이언트 ID
+>>>>spring.security.oauth2.client.registration.naver.client-secret=클라이언트 Secret
+>>>>spring.security.oauth2.client.registration.naver.redirect-uri={baseUrl}/{action}/oauth2/code/{registrationId}
+>>>>spring.security.oauth2.client.registration.naver.authorization_grant_type=authorization_code
+>>>>spring.security.oauth2.client.registration.naver.scope=name,email,profile_image
+>>>>spring.security.oauth2.client.registration.naver.client-name=Naver
+>>>>
+>>>># provider
+>>>>spring.security.oauth2.client.provider.naver.authorization_uri=https://nid.naver.com/oauth2.0/authorize
+>>>>spring.security.oauth2.client.provider.naver.token_uri=https://nid.naver.com/oauth2.0/token
+>>>>spring.security.oauth2.client.provider.naver.user-info-uri=https://openapi.naver.com/v1/nid/me
+>>>>spring.security.oauth2.client.provider.naver.user_name_attribute=response
+>>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 기존 테스트에 시큐리티 적용하기
+>- 기존 테스트의 문제점과 개선방향
+>>- 기존 테스트에선 API를 바로 호출해도 문제가 없었으나, 시큐리티 옵션이 활성화되면 인증된 사용자만 API를 호출할 수 있음
+>>- 기존의 API 테스트 코드들에 인증한 사용자가 호출한 것처럼 작동하도록 수정
+>- CustomOAuth2UserService 를 찾을 수 없음
+>>1. hello가_리턴된다 의 No qualifying bean of type 'com.~~.CusomOAuth2UserService 메시지는 생성 시 소셜 로그인 관련 설정값들이 없기 때문에 발생
+>>2. src/main 의 application.properties가 src/test 에서 적용은 되지만 application-oauth.properties는 적용되지 않아 생기는 문제로, test환경에 맞는 properties를 작성해야함
+>>- src/test/resources/application.properties
+>>>```properties
+>>>spring.jpa.show_sql=true
+>>>spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+>>>spring.h2.console.enabled=true
+>>>
+>>>spring.session.store-type=jdbc
+>>>
+>>># Test OAuth
+>>>
+>>>spring.security.oauth2.client.registration.google.client-id=test
+>>>spring.security.oauth2.client.registration.google.client-secret=test
+>>>spring.security.oauth2.client.registration.google.client-scope=profile,email
+>>>```
+>- 302 Status Code (리다이렉션 응답)
+>>1. 인증되지 않은 사용자의 요청은 이동시키기 때문에 생기는 결과로 임의로 인증된 사용자를 추가하여 API 테스트 진행해야함
+>>- build.gradle 에 spring-security-test 의존성 추가
+>>>```gradle
+>>>testImplementation('org.springframework.security:spring-security-test')
+>>>```
+>>- src/test/java/.../web/PostsApiControllerTest.java
+>>>```java
+>>>import static org.assertj.core.api.Assertions.assertThat;
+>>>import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+>>>import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+>>>import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+>>>import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+>>>
+>>>@RunWith(SpringRunner.class)
+>>>@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+>>>public class PostsApiControllerTest {
+>>>    @LocalServerPort
+>>>    private int port;
+>>>
+>>>    @Autowired
+>>>    private TestRestTemplate restTemplate;
+>>>
+>>>    @Autowired
+>>>    private PostsRepository postsRepository;
+>>>
+>>>    @Autowired
+>>>    private WebApplicationContext context;
+>>>
+>>>    private MockMvc mvc;
+>>>
+>>>    @Before
+>>>    public void setup() {
+>>>        mvc = MockMvcBuilders
+>>>                .webAppContextSetup(context)
+>>>                .apply(springSecurity())
+>>>                .build();
+>>>    }
+>>>
+>>>    @After
+>>>    public void tearDown() throws Exception {
+>>>        postsRepository.deleteAll();
+>>>    }
+>>>
+>>>    @Test
+>>>    @WithMockUser(roles="USER")
+>>>    public void Posts_등록된다() throws Exception {
+>>>        // given
+>>>        String title = "title";
+>>>        String content = "content";
+>>>        PostsSaveRequestDto requestDto = PostsSaveRequestDto.builder()
+>>>                .title(title)
+>>>                .content(content)
+>>>                .author("author")
+>>>                .build();
+>>>
+>>>        String url = "http://localhost:" + port + "/api/v1/posts";
+>>>
+>>>        // when
+>>>        mvc.perform(post(url)
+>>>                .contentType(MediaType.APPLICATION_JSON_UTF8)
+>>>                .content(new ObjectMapper().writeValueAsString(requestDto)))
+>>>                .andExpect(status().isOk());
+>>>
+>>>        // then
+>>>        List<Posts> all = postsRepository.findAll();
+>>>        assertThat(all.get(0).getTitle()).isEqualTo(title);
+>>>        assertThat(all.get(0).getContent()).isEqualTo(content);
+>>>    }
+>>>
+>>>    @Test
+>>>    @WithMockUser(roles="USER")
+>>>    public void Posts_수정된다() throws Exception {
+>>>        // given
+>>>        Posts savedPosts = postsRepository.save(Posts.builder()
+>>>                .title("title")
+>>>                .content("content")
+>>>                .author("author")
+>>>                .build());
+>>>
+>>>        Long updateId = savedPosts.getId();
+>>>        String expectedTitle = "title2";
+>>>        String expectedContent = "content2";
+>>>
+>>>        PostsUpdateRequestDto requestDto = PostsUpdateRequestDto.builder()
+>>>                .title(expectedTitle)
+>>>                .content(expectedContent)
+>>>                .build();
+>>>
+>>>        String url = "http://localhost:" + port + "/api/v1/posts/" + updateId;
+>>>
+>>>        HttpEntity<PostsUpdateRequestDto> requestEntity = new HttpEntity<>((requestDto));
+>>>
+>>>        // when
+>>>        mvc.perform(put(url)
+>>>                .contentType(MediaType.APPLICATION_JSON_UTF8)
+>>>                .content(new ObjectMapper().writeValueAsString(requestDto)))
+>>>                .andExpect(status().isOk());
+>>>
+>>>        // then
+>>>        List<Posts> all = postsRepository.findAll();
+>>>        assertThat(all.get(0).getTitle()).isEqualTo(expectedTitle);
+>>>        assertThat(all.get(0).getContent()).isEqualTo(expectedContent);
+>>>    }
+>>>}
+>>>```
+>- @WebMvcTest 에서 CustomOAuth2UserService 를 찾을 수 없음
+>>- @WebMvcTest 는 WebSecurityConfigurerAdapter, WebMvcConfigurer 를 비롯한 @ControllerAdvice, @Controller를 읽고, @Repository, @Service, @Component는 스캔대상이 아님
+>>- SecurityConfig 는 읽었지만 SecurityConfig 를 생성하기 위한 CustomOAuth2UserService 는 읽을 수 없어 발생
+>>- 스캔 대상에서 SecurityConfig 를 제거하여 해결하며, 여기서도 @WithMockUser로 테스트용 인증된 사용자를 생성
+>>>```java
+>>>@RunWith(SpringRunner.class)
+>>>@WebMvcTest(controllers = HelloController.class,
+>>>    excludeFilters = {
+>>>        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SecurityConfig.class)
+>>>    })
+>>>public class HelloControllerTest {
+>>>    @Autowired
+>>>    private MockMvc mvc;
+>>>
+>>>    @WithMockUser(roles="USER")
+>>>    @Test
+>>>    public void hello가_리턴된다() throws Exception {
+>>>        String hello = "hello";
+>>>
+>>>        mvc.perform(get("/hello"))
+>>>                .andExpect(status().isOk())
+>>>                .andExpect(content().string(hello));
+>>>    }
+>>>
+>>>    @WithMockUser(roles="USER")
+>>>    @Test
+>>>    public void helloDto가_리턴된다() throws Exception {
+>>>        String name = "hello";
+>>>        int amount = 1000;
+>>>
+>>>        mvc.perform(
+>>>                    get("/hello/dto")
+>>>                        .param("name", name)
+>>>                        .param("amount", String.valueOf(amount)))
+>>>                .andExpect(status().isOk())
+>>>                .andExpect(jsonPath("$.name", is(name)))
+>>>                .andExpect(jsonPath("$.amount", is(amount)));
+>>>    }
+>>>}
+>>>```
+>>- 이후 @EnableJpaAuditing 으로 인해 At least one JPA metamodel must be present 에러가 발생
+>>>- @EnableJpaAuditing 을 사용하려면 최소 하나의 @Entity 클래스가 필요한데 @WebMvcTest이기 때문에 없어서 생기는 문제
+>>>- @EnableJpaAuditing 과 @SpringBootApplication 을 분리함
+>>>- src/main/java/.../springboot/Application.java
+>>>>```java
+>>>>@SpringBootApplication
+>>>>public class Application {
+>>>>    public static void main(String[] args) {
+>>>>        SpringApplication.run(Application.class, args);
+>>>>    }
+>>>>}
+>>>>```
+>>>- src/main/java/.../springboot/config/JpaConfig.java
+>>>>```java
+>>>>@Configuration
+>>>>@EnableJpaAuditing
+>>>>public class JpaConfig {
+>>>>}
+>>>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## AWS 서버 환경을 만들어보자 - AWS EC2
+
+>### 개요
+>- AWS (Amazon Web Service) 라는 클라우드 서비스를 이용하여 서버 배포를 할 수 있음
+>- 외부에 서비스하려면 24시간 작동하는 서버가 필요한데 3가지 선택지가 있음
+>>- 집 PC 24시간 구동
+>>- 호스팅 서비스 이용 (Cafe 24, 코리아 호스팅 등)
+>>- 클라우드 서비스 이용 (AWS, AZURE, GCP 등)
