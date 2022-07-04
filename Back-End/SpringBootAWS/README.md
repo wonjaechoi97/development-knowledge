@@ -48,7 +48,12 @@
 >>- [EC2에서 RDS에 접근 확인](#ec2에서-rds에-접근-확인)
 >- [EC2 서버에 프로젝트를 배포해보자](#ec2-서버에-프로젝트를-배포해보자)
 >>- [EC2에 프로젝트 Clone 받기](#ec2에-프로젝트-clone-받기)
-
+>>- [배포 스크립트 만들기](#배포-스크립트-만들기)
+>>- [외부 Security 파일 등록하기](#외부-security-파일-등록하기)
+>>- [스프링 부트 프로젝트로 RDS 접근하기](#스프링-부트-프로젝트로-rds-접근하기)
+>>- [EC2에서 소셜 로그인하기](#ec2에서-소셜-로그인하기)
+>- [코드가 푸시되면 자동으로 배포해보자 - Travis CI 배포 자동화](#코드가-푸시되면-자동으로-배포해보자---travis-ci-배포-자동화)
+>>- [CI & CD 소개](#ci--cd-소개)
 
 
 <br>
@@ -2178,4 +2183,197 @@
 ## EC2 서버에 프로젝트를 배포해보자
 
 >### EC2에 프로젝트 Clone 받기
->- 
+>- 깃 설치
+>>1. $ sudo yum install git
+>>2. $ mkdir ~/app && mkdir ~/app/step1
+>- 프로젝트 clone
+>>1. $ cd ~/app/step1
+>>2. $ git clone 프로젝트 주소
+>- 테스트
+>>1. $ ./gradlew test
+>>>- 권한 오류 발생시 $ chmod +x ./gradlew
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 배포 스크립트 만들기
+>- 배포란?
+>>- git clone 혹은 git pull을 통해 새 버전의 프로젝트를 받음
+>>- Gradle이나 Maven을 통해 프로젝트 테스트와 빌드
+>>- EC2 서버에서 해당 프로젝트 실행 및 재실행
+>- 쉘 스크립트 작성
+>>- 배포할 때마다 개발자가 하나하나 명령어를 실행하는것은 불편함이 많음
+>>- $ vim ~/app/step1/deploy.sh
+>>>```sh
+>>>#!/bin/bash
+>>>
+>>>REPOSITORY=/home/ec2-user/app/step1
+>>>PROJECT_NAME=hello_IntelliJ
+>>>
+>>>cd $REPOSITORY/$PROJECT_NAME/
+>>>
+>>>echo "> Git Pull"
+>>>
+>>>git pull
+>>>
+>>>echo "> 프로젝트 Build 시작"
+>>>
+>>>./gradlew build
+>>>
+>>>echo "> step1 디렉토리로 이동"
+>>>
+>>>cd $REPOSITORY
+>>>
+>>>echo "> Build 파일 복사"
+>>>
+>>>cp $REPOSITORY/$PROJECT_NAME/build/libs/*.jar $REPOSITORY/
+>>>
+>>>echo "> 현재 구동중인 애플리케이션 pid 확인"
+>>>
+>>>CURRENT_PID=$(pgrep -f ${PROJECT_NAME}.*.jar)
+>>>
+>>>echo "현재 구동중인 애플리케이션 pid: $CURRENT_PID"
+>>>
+>>>if [ -z "$CURRENT_PID" ]; then
+>>>        echo "> 현재 구동 중인 애플리케이션이 없으므로 종료하지 않습니다."
+>>>else
+>>>        echo "> kill -15 $CURRENT_PID"
+>>>        kill -15 $CURRENT_PID
+>>>        sleep 5
+>>>fi
+>>>
+>>>echo "> 새 애플리케이션 배포"
+>>>
+>>>JAR_NAME=$(ls -tr $REPOSITORY/ | grep jar | tail -n 1)
+>>>
+>>>echo "> JAR Name: $JAR_NAME"
+>>>
+>>>nohup java -jar \
+>>>        -Dspring.config.location=classpath:/application.properties,/home/ec2-user/app/application-oauth.properties,/home/ec2-user/app/application-real-db.properties,classpath:/application-real.properties \
+>>>        -Dspring.profiles.active=real \
+>>>        $REPOSITORY/$JAR_NAME 2>&1 &
+>>>```
+>>- $ chmod +x ./deploy.sh
+>>- $ ./deploy.sh
+>>- $ vim nohup.out
+>>>- application-oauth.properties 가 존재하지 않으므로 오류 발생
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 외부 Security 파일 등록하기
+>- .gitignore 로 제외 대상인 설정파일들의 부재로 원활한 배포가 불가능하므로 서버에 직접 설정파일을 가지고 있도록 세팅함
+>- step1이 아닌 app 디렉토리에 .properties 파일을 생성
+>>- $ vim /home/ec2-user/app/application-oauth.properties
+>>>- 로컬의 application-oauth.properties 내용을 붙여넣기
+>- deploy.sh 파일에 application-oauth.properties를 쓰도록 수정함
+>- $ ./deploy.sh 
+>>- 정상적으로 실행됨
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 스프링 부트 프로젝트로 RDS 접근하기
+>- RDS에서 스프링부트 프로젝트를 실행하기 위해 필요한 작업
+>>- 테이블 생성
+>>>- H2에서 자동 생성해주던 테이블들을 MariaDB에서 직접 쿼리로 생성
+>>- 프로젝트 설정
+>>>- 자바 프로젝트가 MariaDB에 접근하려면 데이터베이스 드라이버가 필요하므로 MariaDB에서 사용 가능한 드라이버를 프로젝트에 추가
+>>- EC2 설정
+>>>- DB 접속 정보를 외부에 공개하면 해킹당할 위험이 크므로 EC2 서버 내부에서 접속 정보를 관리하도록 설정
+>- RDS 테이블 생성
+>>- JPA 테스트 수행시 발생하는 로그의 쿼리를 이용하여 RDS에 반영함
+>>>```sql
+>>>create table posts (id bigint not null auto_increment, create_date datetime, modified_date datetime, author varchar(255), content TEXT not null, title varchar(500) not null, primary key (id)) engine=InnoDB;
+>>>
+>>>create table user (id bigint not null auto_increment, create_date datetime, modified_date datetime, email varchar(255) not null, name varchar(255) not null, picture varchar(255), role varchar(255) not null, primary key (id)) engine=InnoDB;
+>>>```
+>>- 스프링 세션 테이블은 schema-mysql.sql 파일에서 확인 (Ctrl+Shift+N으로 파일찾기)
+>>>```sql
+>>>CREATE TABLE SPRING_SESSION (
+>>>	PRIMARY_ID CHAR(36) NOT NULL,
+>>>	SESSION_ID CHAR(36) NOT NULL,
+>>>	CREATION_TIME BIGINT NOT NULL,
+>>>	LAST_ACCESS_TIME BIGINT NOT NULL,
+>>>	MAX_INACTIVE_INTERVAL INT NOT NULL,
+>>>	EXPIRY_TIME BIGINT NOT NULL,
+>>>	PRINCIPAL_NAME VARCHAR(100),
+>>>	CONSTRAINT SPRING_SESSION_PK PRIMARY KEY (PRIMARY_ID)
+>>>) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+>>>
+>>>CREATE UNIQUE INDEX SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_ID);
+>>>CREATE INDEX SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
+>>>CREATE INDEX SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
+>>>
+>>>CREATE TABLE SPRING_SESSION_ATTRIBUTES (
+>>>	SESSION_PRIMARY_ID CHAR(36) NOT NULL,
+>>>	ATTRIBUTE_NAME VARCHAR(200) NOT NULL,
+>>>	ATTRIBUTE_BYTES BLOB NOT NULL,
+>>>	CONSTRAINT SPRING_SESSION_ATTRIBUTES_PK PRIMARY KEY (SESSION_PRIMARY_ID, ATTRIBUTE_NAME),
+>>>	CONSTRAINT SPRING_SESSION_ATTRIBUTES_FK FOREIGN KEY (SESSION_PRIMARY_ID) REFERENCES SPRING_SESSION(PRIMARY_ID) ON DELETE CASCADE
+>>>) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+>>>```
+>- 프로젝트 설정
+>>- build.gradle 에 MariaDB 드라이버 의존성 추가
+>>>- implementation('org.mariadb.jdbc:mariadb-java-client')
+>>- src/main/resources/ 에 application-real.properties 추가
+>>>```properties
+>>>spring.profiles.include=oauth,real-db
+>>>spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+>>>spring.session.store-type=jdbc
+>>>```
+>>>- 실제 운영될 환경이기 때문에 보안/로그상 이슈가 될 만한 설정들을 모두 제거한 RDS 환경 profile 설정을 추가함
+>- EC2 설정
+>>- EC2 서버에도 app/application-real-db.properties 설정파일을 추가함
+>>>- $ vim ~/app/application-real-db.properties
+>>>```properties
+>>>spring.jpa.hibernate.ddl-auto=none
+>>>spring.datasource.url=jdbc:mariadb://rds주소:포트명(기본은3306)/database이름
+>>>spring.datasource.username=마스터유저네임
+>>>spring.datasource.password=마스터비밀번호
+>>>spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
+>>>```
+>>- deploy.sh 가 real profile을 쓸 수 있도록 작성함
+>>>- 처음 입력한 deploy.sh에 모든 내용이 작성되어 있음 참고할것
+>>- $ ./deploy.sh를 실행후 nohup.out 파일을 확인하여 성공 로그 확인
+>>>- 성공하지 않았다면 gredlew 의 실행권한을 확인할것!! 실행권한이 없어 빌드되지않아 정상적으로 배포되지 않는 상황을 경험함
+>>- $ curl localhost:8080 에서 index.mustache의 내용이 출력되면 성공
+
+<br>
+
+[목차로 이동](#목차)
+
+>### EC2에서 소셜 로그인하기
+>- AWS EC2 도메인으로 접속
+>>- EC2의 인스턴스메뉴로 들어가 본인이 생성한 EC2 인스턴스를 선택하면 퍼블릭 DNS를 확인할 수 있음
+>>- 브라우저에서 퍼블릭DNS:포트번호 로 접속시 index.mustache 화면이 출력됨
+>>- 구글 및 네이버 서비스에 EC2 도메인을 등록하지 않았기 때문에 로그인이 동작하지 않음
+>- 구글에 EC2 주소 등록
+>>- [구글 웹 콘솔](https://console.cloud.google.com/home/dashboard) 에 접속하여 프로젝트로 이동한 후 API 및 서비스 -> 사용자 인증 정보 로 이동하여 OAuth 동의 화면 탭에서 승인된 도메인에 http:// 없이 EC2의 퍼블릭 DNS를 등록함
+>>- 사용자 인증 정보 탭에서 서비스의 이름을 클릭하고 승인된 리디렉션 URI에 http:// 퍼블릭 DNS 주소:8080/login/oauth2/code/google 등록
+>- 네이버에 EC2 주소 등록
+>>- [네이버 개발자 센터](https://developers.naver.com/apps/#/myapps) 로 접속해서 본인의 프로젝트로 이동
+>>- PC 웹 항목에서 서비스 URL와 Callback URL을 http:// 퍼블릭DNS 로 수정함
+>- 현재 방식의 문제점
+>>- 수동 실행되는 Test
+>>>- 본인이 짠 코드가 다른 개발자의 코드에 영향을 끼치지 않는지 확인하기 위해 전체 테스트를 수행해야함
+>>>- 현재 상태에선 항상 개발자가 작업ㅇ르 진행할 떄마다 수동으로 전체 테스트를 수행해야함
+>>- 수동 Build
+>>>- 다른 사람이 작성한 브랜치와 본인이 작성한 브랜치가 합쳐졌을 때(Merge) 이상이 없는지는 Build를 수행해야만 알 수 있음
+>>>- 이를 매번 개발자가 직접 실행해야만 함
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 코드가 푸시되면 자동으로 배포해보자 - Travis CI 배포 자동화
+
+>### CI & CD 소개
+>- 개요
+>>- 여러 개발자의 코드가 실시간으로 병합되고, 테스트가 수행되는 환경, master 브랜치가 푸시되면 배포가 자동으로 이루어지는 환경을 구축하지 않으면 실수할 여지가 너무나 많음
+>>- 
