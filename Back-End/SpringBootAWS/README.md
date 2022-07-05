@@ -54,6 +54,13 @@
 >>- [EC2에서 소셜 로그인하기](#ec2에서-소셜-로그인하기)
 >- [코드가 푸시되면 자동으로 배포해보자 - Travis CI 배포 자동화](#코드가-푸시되면-자동으로-배포해보자---travis-ci-배포-자동화)
 >>- [CI & CD 소개](#ci--cd-소개)
+>>- [Travis CI 연동하기](#travis-ci-연동하기)
+>>- [Travis CI와 AWS S3 연동하기](#travis-ci와-aws-s3-연동하기)
+>>- [Travis CI와 AWS S3, CodeDeploy 연동하기](#travis-ci와-aws-s3-codedeploy-연동하기)
+>>- [배포 자동화 구성](#배포-자동화-구성)
+>>- [CodeDeploy 로그 확인](#codedeploy-로그-확인)
+>- [24시간 365일 중단 없는 서비스를 만들자](#24시간-365일-중단-없는-서비스를-만들자)
+>>- [무중단 배포 소개](#무중단-배포-소개)
 
 
 <br>
@@ -2360,7 +2367,7 @@
 >- 현재 방식의 문제점
 >>- 수동 실행되는 Test
 >>>- 본인이 짠 코드가 다른 개발자의 코드에 영향을 끼치지 않는지 확인하기 위해 전체 테스트를 수행해야함
->>>- 현재 상태에선 항상 개발자가 작업ㅇ르 진행할 떄마다 수동으로 전체 테스트를 수행해야함
+>>>- 현재 상태에선 항상 개발자가 작업을 진행할 떄마다 수동으로 전체 테스트를 수행해야함
 >>- 수동 Build
 >>>- 다른 사람이 작성한 브랜치와 본인이 작성한 브랜치가 합쳐졌을 때(Merge) 이상이 없는지는 Build를 수행해야만 알 수 있음
 >>>- 이를 매번 개발자가 직접 실행해야만 함
@@ -2376,4 +2383,308 @@
 >### CI & CD 소개
 >- 개요
 >>- 여러 개발자의 코드가 실시간으로 병합되고, 테스트가 수행되는 환경, master 브랜치가 푸시되면 배포가 자동으로 이루어지는 환경을 구축하지 않으면 실수할 여지가 너무나 많음
->>- 
+>- CI (Continuous Integration, 지속적 통합)
+>>- 코드 버전 관리를 하는 VCS 시스템에 PUSH가 되면 자동으로 테스트와 빌드가 수행되어 안정적인 배포 파일을 만드는 과정
+>- CD (Continuous Deployment, 지속적인 배포)
+>>- 빌드 결과를 자동으로 운영 서버에 부중단 배포까지 진행되는 과정
+>- Ci의 4가지 규칙
+>>- 모든 소스 코드가 살아 있고 (현재 실행되고) 누구든 현재의 소스에 접근할 수 있는 단일 지점을 유지할 것
+>>- 빌드 프로세스를 자동화해서 누구든 소스로부터 시스템을 빌드하는 단일 명령어를 사용할 수 있게 할 것
+>>- 테스팅을 자동화해서 단일 명령어로 언제든지 시스템에 대한 건전한 테스트 수트를 실행할 수 있게 할 것
+>>- 누구나 현재 실행 파일을 얻으면 지금까지 가장 완전한 실행 파일을 얻었다는 확신을 하게 할 것
+>- 가장 중요한것은 테스팅 자동화로써, 지속적으로 통합하기 위해서 무엇보다 프로젝트가 완전한 상태임을 보장하기 위해 테스트 코드가 잘 구현되어 있어야만 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Travis CI 연동하기
+>- 개요
+>>- Travis CI는 깃허브에서 제공하는 무료 CI 서비스
+>>- 젠킨스는 설치형이기 때문에 EC2 인스턴스가 하나 더 필요하기때문에 시작하는 서비스에서 도입하기엔 부담스러움
+>- Travis CI 웹 서비스 설정
+>>- https://travis-ci.org/ 에서 깃허브 계정으로 로그인 후 우측 상단의 계정명 -> Settings 클릭
+>>- 플랜설정 및 결제수단을 저장한 후 Repositories 에서 저장소 활성화 후 클릭시 저장소 빌드 히스토리 페이지로 이동되는지 확인
+>- 프로젝트 설정
+>>- Travis CI의 상세설정은 프로젝트에 존재하는 .travis.yml 파일에 설정함
+>>>- yml 확장자는 YAML이라고 하며 JSON에서 괄호를 제거한 것과 같음
+>>- 프로젝트의 build.gradle과 같은 위치에 .travis.yml을 생성
+>>>```yml
+>>>language: java
+>>>jdk:
+>>>  - openjdk8
+>>>
+>>>branchs:
+>>>  only:
+>>>    - master
+>>>
+>>># Travis CI 서버의 Home
+>>>cache:
+>>>  directories:
+>>>    - '$HOME/.m2/repository'
+>>>    - '$HOME/.gradle'
+>>>script: "./gradlew clean build"
+>>>
+>>># CI 실행 완료 시 메일로 알람
+>>>notifications:
+>>>  email:
+>>>    recipients:
+>>>      - 개인 이메일
+>>>
+>>># gradlew 파일 권한 문제
+>>>before_install:
+>>>  - chmod +x gradlew
+>>>```
+>>- master 브랜치에 커밋과 푸시를 하고, Travis CI 저장소 페이지를 확인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Travis CI와 AWS S3 연동하기
+>- S3
+>>- AWS에서 제공하는 일종의 파일 서버로 이미지 파일을 비롯한 정적 파일들을 관리하거나 배포 파일들의 관리 같은 파일들을 저장하고 접근 권한을 관리, 검색 등의 기능을 지원함
+>>- AWS 서비스와 Travis CI 연동시 전체 구조
+>>>- GitHub ->
+>>>- Travis CI ->
+>>>>- AWS S3 (jar 전달) -> AWS CodeDeploy (jar 전달)
+>>>- AWS CodeDeploy (배포요청) ->
+>>>- AWS EC2 (배포) -> Spring Boot
+>- Travis CI와 S3 연동
+>>- AWS Key
+>>>- 일반적으로 AWS 서비스에 외부 서비스가 접근할 수 없음
+>>>- 접근 가능한 권한을 가진 Key인 IAM(Identity and Access Management)을 생성해서 사용해야함
+>>- IAM 발급 순서
+>>>1. AWS 웹 콘솔에서 IAM 검색 후 사용자 탭에서 사용자 추가
+>>>2. 사용자 이름과 프로그래밍 방식 엑세스 유형 지정 후 기존 정책 직접 연결 선택
+>>>3. 정책 검색에서 s3full, codedeployfull 검색하여 체크
+>>>4. 태그는 본인이 인지 가능한 정도의 이름으로 생성
+>>>5. 생성 완료 후 엑세스 키와 비밀 엑세스 키가 생성되는데 Travis CI에 등록함
+>>- Travis CI에 키 등록
+>>>1. Travis의 설정 화면에서 Environment Variables 항목에 다음 내용 추가
+>>>>- AWS_ACCESS_KEY | IAM 엑세스키
+>>>>- AWS_SECRET_KEY | IAM 비밀 엑세스키
+>>- S3 버킷 생성 순서
+>>>1. AWS 웹 콘솔에서 S3 검색 후 이동하여 버킷 만들기 클릭
+>>>2. 배포할 Zip 파일이 모여있는 장소임을 의미하는 이름으로 버킷명 작성
+>>>3. 버킷의 퍼블릭 액세스를 모두 차단으로 설정 후 생성
+>>- .travis.yml 추가
+>>>```yml
+>>>language: java
+>>>jdk:
+>>>  - openjdk8
+>>>
+>>>branchs:
+>>>  only:
+>>>    - master
+>>>
+>>># Travis CI 서버의 Home
+>>>cache:
+>>>  directories:
+>>>    - '$HOME/.m2/repository'
+>>>    - '$HOME/.gradle'
+>>>script: "./gradlew clean build"
+>>>
+>>># gradlew 파일 권한 문제
+>>>before_install:
+>>>  - chmod +x gradlew
+>>>
+>>>before_deploy: 
+>>>  - zip -r 프로젝트명 *
+>>>  - mkdir -p deploy
+>>>  - mv 프로젝트명.zip deploy/프로젝트명.zip
+>>>    
+>>>deploy: 
+>>>  - provider: s3
+>>>    access_key_id: $AWS_ACCESS_KEY # Trabis repo setting에 설정된 값
+>>>    secret_access_key: $AWS_SECRET_KEY # Travis repo setting에 설정된 값
+>>>    bucket: 버킷이름 # S3 버킷
+>>>    region: ap-northeast-2
+>>>    skip_cleanup: true
+>>>    acl: private # zip 파일 접근을 private 으로
+>>>    local_dir: deploy # before_deploy에서 생성한 디렉토리
+>>>    wait-until-deployed: true
+>>>
+>>># CI 실행 완료 시 메일로 알람
+>>>notifications:
+>>>  email:
+>>>    recipients:
+>>>      - 개인이메일
+>>>```
+>>- 깃허브로 푸시하면 Travis CI에서 자동으로 빌드가 진행되는지 확인하고 모든 빌드가 성공하는지 확인하고 S3 버킷에 업로드가 성공했는지 확인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Travis CI와 AWS S3, CodeDeploy 연동하기
+>- IAM의 사용자와 역할의 차이
+>>- 사용자
+>>>- AWS 서비스 외에 사용할 수 있는 권한
+>>>- 로컬 PC, IDC 서버, Travis 등
+>>- 역할
+>>>- AWS 서비스에만 할당할 수 있는 권한
+>>>- EC2, CodeDeploy, SQS 등
+>- EC2에 IAM 역할 추가하기
+>>- IAM을 검색하고 역할 탭을 들어가서 역할 만들기 버튼을 클릭
+>>- AWS 서비스와 EC2를 선택
+>>- 정책에서 AmazonEC2RoleforAWS-CodeDeploy를 선택
+>>- 태그는 본인이 원하는 이름으로 작성
+>>- 역할의 이름으로 ec2-codedeploy-role 작성하고 등록
+>>- EC2 인스턴스 목록을 이동한 뒤 인스턴스를 마우스 우클릭하여 보안-IAM 역할 수정 선택
+>>- 생성한 역할 선택하고 업데이트한 후 인스턴스 재부팅
+>- CodeDeploy 에이전트 설치
+>>- EC2 에서 명령어 실행
+>>>- $ aws s3 cp s3://aws-codedeploy-ap-northest-2/latest/install . --region ap-northeast-2
+>>>>- No such file or directory 에러가 발생할 경우 $ sudo yum install ruby 설치
+>>>- $ chmod +x ./install
+>>>- $ sudo ./install auto
+>>>- 설치가 완료 됬다면 Agent가 정상적으로 실행되고 있는지 상태검사
+>>>>- $ sudo service codedeploy-agent status
+>- CodeDeploy를 위한 권한 생성
+>>- IAM 역할 생성에서 AWS 서비스와 다른 AWS 서비스의 사용 사례에서 CodeDeploy를 검색하여 선택
+>>- CodeDeploy는 주어진 권한이 하나뿐이므로 선택 없이 바로 다음으로 넘어가서 태그는 본인이 원하는 대로 작성
+>>- codedeploy-role로 역할 이름을 작성하고 생성
+>- CodeDeploy 생성
+>>- CodeDeploy 서비스로 이동해서 애플리케이션 생성 클릭
+>>- 생성할 이름을 작성하고 컴퓨팅 플랫폼으로 EC2/온프레미스 선택
+>>- 생성 완료 후 배포 그룹 생성을 클릭하여 배포 그룹 이름을 입력하고 이전에 생성한 CodeDeploy용 IAM 서비스 역할을 선택
+>>- 배포 유형은 현재 위치로 선택하고 환경 구성에서 Amazon EC2 인스턴스를 체크하고 키와 태그 그룹에서 키와 값을 입력함
+>>- 배포 구성으로 CodeDeployDefault.AllAtOnce 선택하고 로드 밸런싱은 비 활성화함
+>- Travis CI, S3, CodeDeploy 연동
+>>- S3에서 넘겨줄 zip파일을 저장할 디렉토리 생성
+>>>- $ mkdir ~/app/step2 && mkdir ~/app/step2/zip
+>>>- Travis CI의 build가 끝나면 S3에 zip 파일이 전송되고 zip 파일은 /home/ec2-user/app/step2/zip으로 복사되어 압축 풀 예정
+>>- .travis.yml
+>>>```yml
+>>>deploy: 
+>>>    ...
+>>>    
+>>>  - provider: codedeploy
+>>>    access_key_id: $AWS_ACCESS_KEY # Travis repo settings에 설정된 값
+>>>    secret_access_key: $AWS_SECRET_KEY # Travis repo settings에 설정된 값
+>>>    bucket: watercase-springboot-build # S3 버킷
+>>>    key: hello_IntelliJ.zip # 필드 파일을 압축해서 전달
+>>>    bundle_type: zip # 압축 확장자
+>>>    application: watercase-springboot-webservice # 웹 콘솔에서 등록한 CodeDeploy 애플리케이션
+>>>    deployment_group: watercase-springboot-webservice-group # 웹 콘솔에서 등록한 CodeDeploy 배포 그룹
+>>>    region: ap-northeast-2
+>>>    wait-until-deployed: true
+>>>```
+>>- appspec.yml
+>>>```yml
+>>>version: 0.0
+>>>os: linux
+>>>files:
+>>>  - source: /
+>>>    destination: /home/ec2-user/app/step2/zip/
+>>>    overwrite: yes
+>>>```
+>>- 커밋 후 푸시하면 Travis CI가 자동으로 시작되며 이후 CodeDeploy에서 배포가 수행되는 것을 확인할 수 있음
+>>- 배포가 끝난 후 cd /home/ec2-user/app/step2/zip 으로 접근하여 프로젝트 파일들이 잘 전송되었는지 확인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 배포 자동화 구성
+>- deploy.sh 파일 추가
+>>- 프로젝트 루트에 scripts 디렉터리를 추가한 후 deploy.sh 생성
+>>- deploy.sh
+>>>```sh
+>>>#!/bin/bash
+>>>
+>>>REPOSITORY=/home/ec2-user/app/step2
+>>>PROJECT_NAME=hello_IntelliJ
+>>>
+>>>echo "> Build 파일 복사"
+>>>
+>>>cp $REPOSITORY/zip/*.jar $REPOSITORY/
+>>>
+>>>echo "> 현재 구동 중인 애플리케이션 pid 확인"
+>>>
+>>>CURRENT_PID=$(pgrep -fl hello_IntelliJ | grep java | awk '{print $1}')
+>>>
+>>>echo "현재 구동 중인 애플리케이션 pid: $CURRENT_PID"
+>>>
+>>>if [ -z "$CURRENT_PID" ]; then
+>>>    echo "> 현재 구동 중인 애플리케이션이 없으므로 종료하지 않습니다."
+>>>else
+>>>    echo "> kill -15 $CURRENT_PID"
+>>>    kill -15 $CURRENT_PID
+>>>    sleep 5
+>>>fi
+>>>
+>>>echo "> 새 애플리케이션 배포"
+>>>
+>>>JAR_NAME=$(ls -tr $REPOSITORY/*.jar | tail -n 1)
+>>>
+>>>echo "> JAR Name: $JAR_NAME"
+>>>
+>>>echo "> $JAR_NAME 에 실행권한 추가"
+>>>
+>>>chmod +x $JAR_NAME
+>>>
+>>>echo "> $JAR_NAME 실행"
+>>>
+>>>nohup java -jar \
+>>>    -Dspring.config.location=classpath:/application.properties,classpath:/application-real.properties,/home/ec2-user/app/application-oauth.properties,/home/ec2-user/app/application-real-db.properties \
+>>>    -Dspring.profiles.active=real \
+>>>    $JAR_NAME > $REPOSITORY/nohup.out 2>&1 &
+>>>```
+>- .travis.yml 파일 수정
+>>- .travis.yml
+>>>```yml
+>>>before_deploy: 
+>>>  - mkdir -p before-deploy # zip에 포함시킬 파일들을 담을 디렉토리 생성
+>>>  - cp scripts/*.sh before-deploy/
+>>>  - cp appspec.yml before-deploy/
+>>>  - cp build/libs/*.jar before-deploy/
+>>>  - cd before-deploy && zip -r before-deploy * # before-deploy로 이동 후 전체 압축
+>>>  - cd ../ && mkdir -p deploy # 상위 디렉토리로 이동 후 deploy 디렉토리 생성
+>>>  - mv before-deploy/before-deploy.zip deploy/hello_IntelliJ.zip # deploy로 zip파일 이동
+>>>```
+>- appspec.yml 파일 수정
+>>- appspec.yml
+>>>```yml
+>>>...
+>>>
+>>>permissions:
+>>>  - object: /
+>>>    pattern: "**"
+>>>    owner: ec2-user
+>>>    group: ec2-user
+>>>
+>>>hooks:
+>>>  ApplicationStart:
+>>>    - location: deploy.sh
+>>>      timeout: 60
+>>>      runas: ec2-user
+>>>```
+>>- 커밋 후 푸시하여 Travis CI에서 성공 메시지를 확인하고 CodeDeploy 에서도 배포가 성공한 것을 확인
+>- 실제 배포 과정 체험
+>>- build.gradle 에서 프로젝트 버전을 변경함
+>>- index.mustache 내용에 간단하게 Ver.2 텍스트를 추가
+>>- 커밋과 푸시를 한 후 변경된 코드가 잘 배포 되었는지 확인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### CodeDeploy 로그 확인
+>- 오류 발생시 로그 찾기
+>>- CodeDeploy와 같이 AWS가 지원하는 서비스에서 오류 발생시 로그 찾는 방법을 모르면 오류를 해결하기가 어려움
+>>- CodeDeploy에 관한 대부분의 내용은 /opt/codedeploy-agent/deployment-root에 존재
+>>- /opt/codedeploy-agent/deployment-root/deployment-logs/codedeploy-agent-deployments.log 에 CodeDeploy로 이루어지는 배포 내용 중 표준 입/출력 내용이 담겨있어 echo 내용 확인 가능
+>- 배포하는 동안 스프링 부트 프로젝트는 종료 상태가 되어 서비스를 이용할 수 없다는 문제가 있어 서비스 중단 없는 배포 방법이 필요함
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 24시간 365일 중단 없는 서비스를 만들자
+
+>### 무중단 배포 소개
+>- 
