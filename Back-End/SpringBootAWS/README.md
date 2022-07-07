@@ -61,7 +61,9 @@
 >>- [CodeDeploy 로그 확인](#codedeploy-로그-확인)
 >- [24시간 365일 중단 없는 서비스를 만들자](#24시간-365일-중단-없는-서비스를-만들자)
 >>- [무중단 배포 소개](#무중단-배포-소개)
-
+>>- [엔진엑스 설치와 스프링 부트 연동하기](#엔진엑스-설치와-스프링-부트-연동하기)
+>>- [무중단 배포 스크립트 만들기](#무중단-배포-스크립트-만들기)
+>>- [무중단 배포 테스트](#무중단-배포-테스트)
 
 <br>
 
@@ -2687,4 +2689,467 @@
 ## 24시간 365일 중단 없는 서비스를 만들자
 
 >### 무중단 배포 소개
->- 
+>- 개요
+>>- 배포하는 동안 새로운 Jar가 실행되기 전까진 기존 Jar를 종료시켜 놓기 때문에 짧은 시간이라도 서비스가 중단되게 됨
+>>- 배포가 서비스를 정지해야만 가능하다면 롤백조차 어렵기 때문에 여러가지 문제점이 발생함
+>>- 서비스를 정지하지 않고, 배포할 수 있는 방법을 부중단 배포라고 함
+>- 무중단 배포 방식
+>>- AWS에서 블루 그린 무중단 배포
+>>- 도커를 이용한 웹서비스 무중단 배포
+>>- L4 스위치를 이용한 무중단 배포
+>>- Nginx를 이용한 무중단 배포
+>- 엔진엑스 (Nginx)
+>>- 웹 서버, 리버스 프록시, 캐싱, 로드 밸런싱, 미디어 스트리밍 들을 위한 오픈소스 소프트웨어
+>>- 저렴하고 쉽기 때문에 많이 사용됨
+>>- 리버스 프록시
+>>>- 외부의 요청을 받아 백엔드 서버로 요청을 전달하는 행위
+>>>- 리버스 프록시 서버 (엔진엑스) 는 요청을 전달하고, 실제 요청에 대한 처리는 뒷단의 웹 애플리케이션 서버들이 처리함
+>>- 기존 EC2에 그대로 적용하여 배포를 위해 AWS EC2 인스턴스를 추가할 필요 없고, 꼭 클라우드 인프라가 구축되어 있지않아도 사용할 수 있는 범용적인 방법임
+>>- 기본 구조
+>>>- 하나의 EC2 혹은 리눅스 서버에 엔진엔스 1대와 스프링 부트 Jar 2대
+>>>- 엔진엑스는 80(http), 443(https) 포트 할당
+>>>- 스프링 부트1은 8081 포트로 실행
+>>>- 스프링 부트2는 8082 포트로 실행
+>>- 무중단 배포 과정
+>>>1. 엔진엑스 무중단 배포 1
+>>>>- 사용자가 서비스 주소로 접속 (80 혹은 443 포트)
+>>>>- 엔진엑스는 사용자의 요청을 받아 현재 연결된 스프링 부트로 요청을 전달
+>>>>>- 스프링 부트1 즉, 8081 포트로 요청을 전달한다고 가정
+>>>>- 스프링 부트2는 엔진엑스와 연결된 상태가 아니므로 요청받지 못함
+>>>2. 1.1 버전으로 신규 배포시 엔진엑스와 연결되지 않은 스프링 부트2 (8082포트) 로 배포
+>>>3. 엔진엑스 무중단 배포 2
+>>>>- 스프링 부트1을 바라보고 있기 때문에 배포하는 동안 서비스가 중단되지 않음
+>>>>- 배포가 끝나고 정상적으로 스프링 부트2가 구동 중인지 확인
+>>>>- 스프링 부트2가 정상 구동 중이면 nginx reload 명령어를 통해 8081 대신 8082를 바라보도록 함
+>>>>- nginx reload는 0.1초 이내에 완료됨
+>>>4. 1.2 버전으로 배포시 이번에는 스프링 부트1 (8081배포) 로 배포
+>>>5. 엔진엑스 무중단 배포 3
+>>>>- 엔직엔스와 연결된 것은 스프링 부트 2
+>>>>- 스프링 부트1의 배포가 끝났다면 엔진엑스가 스프링 부트1을 바라보도록 변경하고 nginx reload 실행
+>>>>- 이후 요청부터는 엔진엑스가 스프링 부트 1로 요청을 전달
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 엔진엑스 설치와 스프링 부트 연동하기
+>- EC2에 엔진엑스 설치
+>>- EC2에 접속하여 엔진엑스 설치
+>>>- $ sudo amazon-linux-extras install -y nginx1
+>>- 설치 완료 후 엔진엑스 실행
+>>>- $ sudo service nginx start
+>- 보안 그룹 추가
+>>- 엔진엑스의 기본 포트번호인 80을 보안 그룹에 추가
+>>>- EC2 -> 보안 그룹 -> EC2 보안 그룹 선택 -> 인바운드 편집
+>>>- TCP / 80 / 0.0.0.0/0, ::/0 / nginx 규칙 추가
+>- 리다이렉션 주소 추가
+>>- 8080이 아닌 80포트로 주소가 변경되므로 구글과 네이버 로그인에도 변경된 주소를 등록
+>>>- 기존 리디렉션 주소에서 8080을 제거한 주소를 추가 등록
+>>>- [구글 웹 콘솔](https://console.cloud.google.com/home/dashboard), [네이버 개발자 센터](https://developers.naver.com/apps/#/myapps)
+>>- 이후 EC2의 도메인으로 접근하되, 8080 포트를 제거하고 접근했을때 엔진엑스 웹페이지가 출력
+>- 엔진엑스와 스프링 부트 연동
+>>- 엔진엑스가 현재 실행중인 스프링 부트 프로젝트를 바라볼 수 있도록 프록시 설정하기 위해 엔진엔스 설정 파일의 server에 일부 내용 추가
+>>>- sudo vim /etc/nginx/nginx.conf
+>>>>```sh
+>>>>server {
+>>>>    listen       80;
+>>>>    listen       [::]:80;
+>>>>    server_name  _;
+>>>>    root         /usr/share/nginx/html;
+>>>>
+>>>>    # Load configuration files for the default server block.
+>>>>    include /etc/nginx/default.d/*.conf;
+>>>>
+>>>>    location / {
+>>>>            proxy_pass http://localhost:8080;
+>>>>            proxy_set_header X-Real-IP $remote_addr;
+>>>>            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+>>>>            proxy_set_header Host $http_host;
+>>>>    }
+>>>>
+>>>>    error_page 404 /404.html;
+>>>>    location = /404.html {
+>>>>    }
+>>>>
+>>>>    error_page 500 502 503 504 /50x.html;
+>>>>    location = /50x.html {
+>>>>    }
+>>>>}
+>>>>```
+>>- 수정 후 엔진엑스 재시작
+>>>- $ sudo service nginx restart
+>>- 엔진엑스가 스프링 부트 프로젝트를 프록시하는 것을 확인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 무중단 배포 스크립트 만들기
+>- profile API 추가
+>>- 배포 시에 8081, 8082 두 포트중 어떤 포트를 사용할지 판단하는 기준 API
+>>- main/java/.../web/ProfileController.java
+>>>```java
+>>>@RequiredArgsConstructor
+>>>@RestController
+>>>public class ProfileController {
+>>>    private final Environment env;
+>>>
+>>>    @GetMapping("/profile")
+>>>    public String profile() {
+>>>        List<String> profiles = Arrays.asList(env.getActiveProfiles());
+>>>        List<String> realProfiles = Arrays.asList("real", "real1", "real2");
+>>>        String defaultProfile = profiles.isEmpty() ? "default" : profiles.get(0);
+>>>
+>>>        return profiles.stream()
+>>>                .filter(realProfiles::contains)
+>>>                .findAny()
+>>>                .orElse(defaultProfile);
+>>>    }
+>>>}
+>>>```
+>>- test/java/.../web/ProfileControllerUnitTest.java
+>>>- 정상적으로 동작하는지 확인하기 위한 유닛테스트
+>>>```java
+>>>import static org.assertj.core.api.Assertions.assertThat;
+>>>
+>>>public class ProfileControllerUnitTest {
+>>>
+>>>    @Test
+>>>    public void real_profile이_조회된다() {
+>>>        // given
+>>>        String expectedProfile = "real";
+>>>        MockEnvironment env = new MockEnvironment();
+>>>        env.addActiveProfile(expectedProfile);
+>>>        env.addActiveProfile("oauth");
+>>>        env.addActiveProfile("real-db");
+>>>
+>>>        ProfileController controller = new ProfileController(env);
+>>>
+>>>        // when
+>>>        String profile = controller.profile();
+>>>
+>>>        // then
+>>>        assertThat(profile).isEqualTo(expectedProfile);
+>>>    }
+>>>
+>>>    @Test
+>>>    public void real_profile이_없으면_첫_번쨰가_조회된다() {
+>>>        // given
+>>>        String expectedProfile = "oauth";
+>>>        MockEnvironment env = new MockEnvironment();
+>>>
+>>>        env.addActiveProfile(expectedProfile);
+>>>        env.addActiveProfile("real-db");
+>>>
+>>>        ProfileController controller = new ProfileController(env);
+>>>
+>>>        // when
+>>>        String profile = controller.profile();
+>>>
+>>>        // then
+>>>        assertThat(profile).isEqualTo(expectedProfile);
+>>>    }
+>>>
+>>>    @Test
+>>>    public void active_profile이_없으면_default가_조회된다() {
+>>>        // given
+>>>        String expectedProfile = "default";
+>>>        MockEnvironment env = new MockEnvironment();
+>>>        ProfileController controller = new ProfileController(env);
+>>>
+>>>        // when
+>>>        String profile = controller.profile();
+>>>
+>>>        // then
+>>>        assertThat(profile).isEqualTo(expectedProfile);
+>>>    }
+>>>}
+>>>```
+>>- /profile 이 인증 없이도 호출될 수 있게 SecurityConfig 에 추가
+>>>```java
+>>>.antMatchers("/", "/css/**", "/images/**", "/js/**", "/h2-console/**", "/profile").permitAll()
+>>>```
+>>- test/java/.../web/ProfileControllerTest.java
+>>>- SecurityConfig 설정이 잘 되었는지 확인하는 테스트 코드 
+>>>```java
+>>>import static org.assertj.core.api.Assertions.assertThat;
+>>>
+>>>@RunWith(SpringRunner.class)
+>>>@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+>>>public class ProfileControllerTest {
+>>>    @LocalServerPort
+>>>    private int port;
+>>>
+>>>    @Autowired
+>>>    private TestRestTemplate restTemplate;
+>>>
+>>>    @Test
+>>>    public void profile은_인증없이_호출된다() throws Exception {
+>>>        String expected = "default";
+>>>
+>>>        ResponseEntity<String> response = restTemplate.getForEntity("/profile", String.class);
+>>>        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+>>>        assertThat(response.getBody()).isEqualTo(expected);
+>>>    }
+>>>}
+>>>```
+>>- 푸시하여 배포가 완료된 뒤 브라우저에서 /profile 접속 시 profile이 출력되는지 확인
+>- real1, real2 profile 생성
+>>- profile 추가
+>>>- 현재 EC2 환경에서 실행되는 profile은 real 뿐임
+>>>- Travis CI 배포 자동화를 위한 profile 이외에 무중단 배포를 위한 profile 2개를 src/main/resources 에 추가
+>>- application-real1.properties
+>>>```properties
+>>>server.port=8081
+>>>spring.profiles.include=oauth,real-db
+>>>spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+>>>spring.session.store-type=jdbc
+>>>```
+>>- application-real2.properties
+>>>```properties
+>>>server.port=8082
+>>>spring.profiles.include=oauth,real-db
+>>>spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+>>>spring.session.store-type=jdbc
+>>>```
+>- 엔진엑스 설정 수정
+>>- 무중단 배포의 핵심은 엔진엑스 설정
+>>>- 배포 때마다 엔진엑스의 프록시 설정(스프링 부트로 요청을 흘려보내는)이 순식간에 교체됨
+>>- 엔진엑스 설정이 모여있는 /etc/nginx/conf.d/ 에 service-url.inc 파일 생성
+>>>- $ sudo vim /etc/nginx/conf.d/service-url.inc
+>>- 해당 내용 입력
+>>>- set $service_url http://127.0.0.1:8080;
+>>- service-url.inc 를 엔진엑스가 사용할 수 있도록 설정
+>>>- $ sudo vim /etc/nginx/nginx.conf
+>>>- location / 부분 수정
+>>>>```sh
+>>>>include /etc/nginx/conf.d/service-url.inc;
+>>>>
+>>>>location / {
+>>>>  proxy_pass $service_url;
+>>>>```
+>>- 수정 후 엔진엑스 재시작
+>>>- $ sudo service nginx restart
+>- 배포 스크립트들 작성
+>>- step2 와 중복되지 않도록 EC2에 step3 디렉터리 생성
+>>>- $ mkdir ~/app/step3 && mkdir ~/app/step3/zip
+>>- springboot의 appspec.yml 에 step3로 배포되도록 수정
+>>>```yml
+>>>files:
+>>>  - source: /
+>>>    destination: /home/ec2-user/app/step3/zip/
+>>>    overwrite: yes
+>>>```
+>>- 무중단 배포를 위해 작성할 스크립트 목록
+>>>- stop.sh
+>>>>- 기존 엔진엑스에 연결되어 있진 않지만, 실행 중이던 스프링 부트 종료
+>>>- start.sh
+>>>>- 배포할 신규 버전 스프링 부트 프로젝트를 stop.sh 종료한 'profile'로 실행
+>>>- health.sh
+>>>>- 'start.sh'로 실행시킨 프로젝트가 정상적으로 실행됐는지 체크
+>>>- switch.sh
+>>>>- 엔진엑스가 바라보는 스프링 부트를 최신 버전으로 변경
+>>>- profile.sh
+>>>>- 앞선 4개의 스크립트 파일에서 공용으로 사용할 'profile'과 포트 체크 로직
+>>- appspec.yml 에 스크립트들을 사용하도록 설정
+>>>```yml
+>>>hooks:
+>>>  AfterInstall:
+>>>    - location: stop.sh # 엔진엑스와 연결되어 있지 않은 스프링 부트를 종료
+>>>      timeout: 60
+>>>      runas: ec2-user
+>>>  ApplicationStart:
+>>>    - location: start.sh # 엔진엑스와 연결되어 있지 않은 Port로 새 버전의 스프링 부트를 시작
+>>>      timeout: 60
+>>>      runas: ec2-user
+>>>  ValidateService:
+>>>    - location: health.sh # 새 스프링 부트가 정상적으로 실행됐는지 확인
+>>>      timeout: 60
+>>>      runas: ec2-user
+>>>```
+>>>- Jar 파일이 복사된 이후부터 차례로 스크립트들이 실행됨
+>>- scripts/profile.sh
+>>>```sh
+>>>#!/usr/bin/env bash
+>>>
+>>># 쉬고 있는 profile 찾기: real1이 사용 중이면 real2가 쉬고 있고, 반대면 real1이 쉬고 있음
+>>>
+>>>function find_idle_profile()
+>>>{
+>>>  RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/profile)
+>>>
+>>>  if [ ${RESPONSE_CODE} -ge 400 ] # 400 보다 크면 (즉, 40x/50x 에러 모두 포함)
+>>>
+>>>  then
+>>>    CURRENT_PROFILE=real2
+>>>  else
+>>>    CURRENT_PROFILE=$(curl -s http://localhost/profile)
+>>>  fi
+>>>
+>>>  if [ ${CURRENT_PROFILE} == real1 ]
+>>>  then
+>>>    IDLE_PROFILE=real2
+>>>  else
+>>>    IDLE_PROFILE=real1
+>>>  fi
+>>>
+>>>  echo "${IDLE_PROFILE}"
+>>>}
+>>>
+>>># 쉬고 있는 profile의 port 찾기
+>>>function find_idle_port()
+>>>{
+>>>  IDLE_PROFILE=$(find_idle_profile)
+>>>
+>>>  if [ ${IDLE_PROFILE} == real1 ]
+>>>  then
+>>>    echo "8081"
+>>>  else
+>>>    echo "8082"
+>>>  fi
+>>>}
+>>>```
+>>- scripts/stop.sh
+>>>```sh
+>>>#!/usr/bin/env bash
+>>>
+>>>ABSPATH=$(readlink -f $0)
+>>>ABSDIR=$(dirname $ABSPATH)
+>>>source ${ABSDIR}/profile.sh
+>>>
+>>>IDLE_PORT=$(find_idle_port)
+>>>
+>>>echo "> $IDLE_PORT 에서 구동 중인 에플리케이션 pid 확인"
+>>>IDLE_PID=$(lsof -ti tcp:${IDLE_PORT})
+>>>
+>>>if [ -z ${IDLE_PID}]
+>>>then
+>>>  echo "> 현재 구동 중인 애플리케이션이 없으므로 종료하지 않습니다."
+>>>else
+>>>  echo "> kill -15 $IDLE_PID"
+>>>  kill -15 ${IDLE_PID}
+>>>  sleep 5
+>>>fi
+>>>```
+>>- scripts/start.sh
+>>>```sh
+>>>#!/usr/bin/env bash
+>>>
+>>>ABSPATH=$(readlink -f $0)
+>>>ABSDIR=$(dirname $ABSPATH)
+>>>source ${ABSDIR}/profile.sh
+>>>
+>>>REPOSITORY=/home/ec2-user/app/step3
+>>>PROJECT_NAME=hello_IntelliJ
+>>>
+>>>echo "> Build 파일 복사"
+>>>echo "> cp $REPOSITORY/zip/*.jar $REPOSITORY/"
+>>>
+>>>cp $REPOSITORY/zip/*.jar $REPOSITORY/
+>>>
+>>>echo "> 새 애플리케이션 배포"
+>>>JAR_NAME=$(ls -tr $REPOSITORY/*.jar | tail -n 1)
+>>>
+>>>echo "> JAR Name: $JAR_NAME"
+>>>
+>>>echo "> $JAR_NAME 에 실행권한 추가"
+>>>
+>>>chmod +x $JAR_NAME
+>>>
+>>>echo "> $JAR_NAME 실행"
+>>>
+>>>IDLE_PROFILE=$(find_idle_profile)
+>>>
+>>>echo "> $JAR_NAME 를 profile=$IDLE_PROFILE 로 실행합니다"
+>>>nohup java -jar \
+>>>  -Dspring.config.location=classpath:/application.properties,classpath:/application-$IDLE_PROFILE.properties,\
+>>>  /home/ec2-user/app/application-oauth.properties,/home/ec2-user/app/application-real-db.properties \
+>>>  -Dspring.profiles.active=$IDLE_PROFILE \
+>>>  $JAR_NAME > $REPOSITORY/nohup.out 2>&1 &
+>>>```
+>>- health.sh
+>>>```sh
+>>>#!/usr/bin/env bash
+>>>
+>>>ABSPATH=$(readlink -f $0)
+>>>ABSDIR=$(dirname $ABSPATH)
+>>>source ${ABSDIR}/profile.sh
+>>>source ${ABSDIR}/switch.sh
+>>>
+>>>IDLE_PORT=$(find_idle_port)
+>>>
+>>>echo "> Health Check Start!"
+>>>echo "> IDLE_PORT: $IDLE_PORT"
+>>>echo "> curl -s http://localhost:$IDLE_PORT/profile"
+>>>sleep 10
+>>>
+>>>for RETRY_COUNT in {1..10}
+>>>do
+>>>  RESPONSE=$(curl -s http://localhost:${IDLE_PORT}/profile)
+>>>  UP_COUNT=$(echo ${RESPONSE} | grep 'real' | wc -l)
+>>>
+>>>  if [ ${UP_COUNT} -ge 1 ]
+>>>  then # $up_count >= 1 ("real" 문자열이 있는지 검증)
+>>>    echo "> Health check 성공"
+>>>    switch_proxy
+>>>    break
+>>>  else
+>>>    echo "> Health check의 응답을 알 수 없거나 혹은 실행 상태가 아닙니다."
+>>>    echo "> Health check: ${RESPONSE}"
+>>>  fi
+>>>
+>>>  if [ ${RETRY_COUNT -eq 10} ]
+>>>  then
+>>>    echo "> Health check 실패."
+>>>    echo "> 엔진엑스에 연결하지 않고 배포를 종료합니다"
+>>>    exit 1
+>>>  fi
+>>>
+>>>  echo "> Health check 연결 실패. 재시도 ..."
+>>>  sleep 10
+>>>done
+>>>```
+>>- switch.sh
+>>>```sh
+>>>#!/usr/bin/env bash
+>>>
+>>>ABSPATH=$(readlink -f $0)
+>>>ABSDIR=$(dirname $ABSPATH)
+>>>source ${ABSDIR}/profile.sh
+>>>
+>>>function switch_proxy() {
+>>>  IDLE_PORT=$(find_idle_port)
+>>>
+>>>  echo "> 전환할 Port: $IDLE_PORT"
+>>>  echo "> Port 전환"
+>>>  echo "set \$service_url http://127.0.0.1:${IDLE_PORT};" | sudo tee /etc/nginx/conf.d/service-url.inc
+>>>
+>>>  echo "> 엔진엑스 Reload"
+>>>  sudo service nginx reload
+>>>}
+>>>```
+<br>
+
+[목차로 이동](#목차)
+
+>### 무중단 배포 테스트
+>- 사전 조치
+>>- 잦은 배포로 Jar 파일명이 겹칠 수 있는데, 매번 버전을 올리는 것 대신 자동으로 버전갑싱 변결될 수 있도록 수정
+>>- build.gradle
+>>>```gradle
+>>>version '1.0.1-SNAPSHOT-' +new Date().format("yyyyMMddHHmmss")
+>>>```
+>- 무중단 배포 테스트
+>>- 최종 코드를 깃허브에 푸시후 배포가 자동으로 진행되면 CodeDeploy 로그를 통해 잘 진행되는지 확인
+>>>- $ tail -f /opt/codedeploy-agent/deployment-root/deployment-logs/codedeploy-agent-deployments.log
+>>- 스프링 부트 로그 확인 명령
+>>>- $ vim ~/app/step3/nohup.out
+>- 결과
+>>- 한 번 더 배포하면 real2로 배포되며 이 과정에서 브라우저 새로고침을 해보면 전혀 중단 없는 것을 확인할 수 있음
+>>- 2번 배포를 진행한 뒤 다음 명령으로 자바 애플리케이션 실행 여부를 확인
+>>>- $ ps -ef | grep java
+>>- 2개의 애플리케이션이 실행되고 있음을 확인하면 성공
+
+<br>
+
+[목차로 이동](#목차)
