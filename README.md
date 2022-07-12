@@ -18,10 +18,17 @@
 >## 🐍 [**Spring**](Back-End/Spring/README.md) - Java Application **FrameWork**
 >## ⌨ [**Linux**](Back-End/Linux/README.md) - Open Source OS Kernel
 >## 🐍 [**SpringBoot & AWS**](Back-End/SpringBootAWS/README.md) - JPA(SpringDataJPA) + SpringSecurity & Auth2.0 + AWS + CI & CD + 무중단 배포
+>## 🔗 [**JPA**](Back-End/JPA/README.md) - Java Persistence  Api
 
 <br>
 
 # 🧮 **ComputerScience** - 컴퓨터 공학 기초 개념
->## 💿 [**OperatingSystem**](ComputerScience/OperatingSystem/README.md) - 운영체제
+>## 💿 [**OperatingSystem**](ComputerScience/OperatingSystem/README.md) - 운영체제 공룡책
+>## 💿 [**OperatingSystem2**](ComputerScience/OperatingSystem2/README.md) - 운영체제 강의(KOCW)
 >## 🔀 [**Network**](ComputerScience/Network/README.md) - 네트워크
 >## 🔠 [**ProgrammingLanguageConcept**](ComputerScience/ProgrammingLanguageConcept/README.md) - 프로그래밍 언어론
+
+<br>
+
+# **기타**
+>## [**기술 면접 빈출 질문**](etc/interview/README.md)
