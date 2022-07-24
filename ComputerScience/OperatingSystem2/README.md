@@ -380,10 +380,10 @@
 >- FCFS(First come First Served) - 비선점형
 >>- 먼저 요청한 프로세스가 먼저 CPU 버스트를 가짐
 >>- FIFO 큐를 이용하여 쉽게 관리됨, 평균 대기시간이 대단히 길어질 수 있으므로 효율적이진 않음
->- SJF(Shortest Job First) - 선점형
+>- SJF(Shortest Job First) - 비선점형
 >>- 가장 작은 CPU 버스트를 가진 프로세스가 먼저 CPU 버스트를 가짐
 >>- 최소 평균 대기 시간이 보장됨
->- SRTF(Shortest-Remaining Time First) - 비선점형
+>- SRTF(Shortest-Remaining Time First) - 선점형
 >>- 남은 버스트 time보다 더 짧은 CPU 버스트 time을 가지는 새로운 프로세스가 도착하면 CPU를 빼앗김
 >- SJF와 SRTF의 문제는 CPU 버스트의 길이를 알 수 없기 때문에 CPU 스케줄링 수준에서는 구현할 수 없고, 과거의 CPU 버스트의 소요시간을 통한 예측 근삿값을 통해 구현됨
 >- Priority Scheduling - 선점형 또는 비선점형
@@ -423,7 +423,8 @@
 >- Throughput (처리량) : 시간당 완료된 프로세스의 개수
 >- Turnaround time (소요시간, 변경시간) : 프로세스의 제출시간과 완료 시간의 간격
 >- Wating time (대기 시간) : 준비큐에서 얼마나 기다렸느냐
->- Response time (응답 시간) : 총처리시간 + 대기시간
+>- Response time (응답 시간) : 하나의 요구를 제출한 후 첫 번째 응답이 나올 때까지의 시간
+>>- 응답 시간은 응답을 출력하는 데 걸리는 시간이 아닌 응답이 시작되는 데까지 걸리는 시간임
 
 <br>
 
