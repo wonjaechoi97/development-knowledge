@@ -28,6 +28,14 @@
 >>- [준영속](#준영속)
 >>- [영속성 관리 정리](#영속성-관리-정리)
 >- [엔티티 매핑](#엔티티-매핑)
+>>- [엔티티 매핑 개요](#엔티티-매핑-개요)
+>>- [@Entity](#entity)
+>>- [@Table](#table)
+>>- [다양한 매핑 사용](#다양한-매핑-사용)
+>>- [데이터베이스 스키마 자동 생성](#데이터베이스-스키마-자동-생성)
+>>- [DDL 생성 기능](#ddl-생성-기능)
+>>- [기본 키 매핑](#기본-키-매핑)
+>>- [필드와 컬럼 매핑: 레퍼런스](#필드와-컬럼-매핑-레퍼런스)
 
 <br>
 
@@ -1131,4 +1139,215 @@
 [목차로 이동](#목차)
 
 >### 기본 키 매핑
->- 
+>- JPA가 제공하는 DB 기본 키 생성 전략
+>>- 직접 할당 : 기본 키를 애플리케이션에서 직접 할당함
+>>- 자동 생성 : 대리 키 사용 방식
+>>>- IDENTITY : 기본 키 생성을 DB에 위임함
+>>>- SEQUENCE : DB 시퀀스를 사용하여 기본 키를 할당함
+>>>- TABLE : 키 생성 테이블을 사용함
+>>- 자동 생성 전략이 다양한 이유는 DB 벤더마다 지원하는 방식이 다르기 때문임
+>>- 기본 키를 직접 할당하려면 @Id 만 사용하면 되고, 자동 생성 전략을 사용하려면 @Id 에 @GeneratedValue 를 추가하고 원하는 키 생성 전략을 선택하면 됨
+>>- 키 생성 전략을 사용하려면 persistence.xml 에 hibernate.id.new_generator_mappings=true 속성을 추가해야 함
+>- 기본 키 직접 할당 전략
+>>- 기본 키를 직접 할당하려면 @Id 로 매핑함
+>>- @Id 적용 가능 자바 타입
+>>>- 자바 기본형
+>>>- 자바 래퍼형
+>>>- String
+>>>- java.util.Date
+>>>- java.sql.Date
+>>>- java.math.BigDecimal
+>>>- java.math.BigInteger
+>>- 기본 키 직접 할당 전략은 em.persist() 로 엔티티를 저장하기 전에 애플리케이션에서 기본 키를 직접 할당하는 방법임
+>- IDENTITY 전략
+>>- 기본 키 생성을 DB에 위임하는 전략으로 주로 MySQL, PostgreSQL, SQL Server, DB2 에서 사용함
+>>- 개발자가 엔티티에 직접 식별자를 할당하면 @Id 어노테이션만 있으면 되지만 식별자가 생성되는 경우에는 @GeneratedValue 어노테이션을 사용하고 식별자 생성 전략을 선택해야 함
+>>- @GeneratedValue 의 strategy 속성 값을 GenerationType.IDENTITY 로 지정함
+>>- 이 전략을 사용하면 JPA 는 기본 키 값을 얻어오기 위해 DB 를 추가로 조회함
+>>```java
+>>// IDENTITY 매핑 코드
+>>@Entity
+>>public class Board {
+>>  @Id
+>>  @GeneratedValue(strategy=GenerationType.IDENTITY)
+>>  private Long id;
+>>  ...
+>>}
+>>
+>>// IDENTITY 사용 코드
+>>private static void logic(EntityManager em) {
+>>  Board board=new Board();
+>>  em.persist(board);
+>>  System.out.println("board.id="+board.getId()); // board.id=1
+>>}
+>>```
+>>- 사용 코드를 보면 em.persist() 를 호출해서 엔티티를 저장한 직후에 할당된 식별자 값을 출력하는데, 출력된 값 1은 저장 시점에 DB가 생성한 값을 JPA가 조회한 것임
+>>- 엔티티가 영속 상태가 되려면 식별자가 반드시 필요한데, IDENTITY 식별자 생성 전략은 엔티티를 DB 에 저장해야 식별자를 구할 수 있으므로 em.persist() 를 호출하는 즉시 INSERT SQL 이 DB에 전달되므로 해당 전략을 트랜잭션을 지원하는 쓰기 지연이 동작하지 않음
+>- AUTO 전략
+>>- DB 의 종류도 많고 기본 키를 만드는 방법도 다양하므로 GenerationType.AUTO 를 사용하여 선택한 DB 방언에 따라 IDENTITY, SEQUENCE, TABLE 전략 중 하나를 자동으로 선택하는 방법을 사용함
+>>```java
+>>// IDENTITY 매핑 코드
+>>@Entity
+>>public class Board {
+>>  @Id
+>>  @GeneratedValue(strategy=GenerationType.AUTO)
+>>  private Long id;
+>>  ...
+>>}
+>>
+>>// @GeneratedValue.strategy 의 기본값은 AUTO 이므로 다음과 같이 사용해도 결과는 같음
+>>@Entity
+>>public class Board {
+>>  @Id @GeneratedValue
+>>  private Long id;
+>>  ...
+>>}
+>>```
+>>- AUTO 전략의 장점은 DB를 변경해도 코드를 수정할 필요가 없다는 것으로, 특히 키 생성 전략이 아직 확정되지 않은 개발 초기 단계나 프로토타입 개발 시 편리하게 사용할 수 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 필드와 컬럼 매핑: 레퍼런스
+>- 필드와 컬럼 매핑 분류
+>>분류|매핑 어노테이션|설명
+>>:--|:--|:--
+>>필드와 컬럼 매핑|@Column|컬럼을 매핑함
+>>&nbsp;|@Enumerated|자바의 enum 타입을 매핑함
+>>&nbsp;|@Temporal|날짜 타입을 매핑함
+>>&nbsp;|@Lob|BLOB, CLOB 타입을 매핑함
+>>&nbsp;|@Transient|특정 필드를 DB에 매핑하지 않음
+>>기타|@Access|JPA 가 엔티티에 접근하는 방식을 지정함
+>- @Column
+>>- 객체 필드를 테이블 컬럼에 매핑하며 가장 많이 사용되고 기능도 많음
+>>>속성|기능|기본값
+>>>:--|:--|:--
+>>>name|필드와 매핑할 테이블의 컬럼 이름|객체의 필드 이름
+>>>insertable(거의 사용하지 않음)|엔티티 저장 시 이 필드도 같이 저장함<br>false 로 설정하면 이 필드는 DB에 저장하지 않음<br>false 옵션은 읽기 전용일 때 사용함|true
+>>>updatable(거의 사용하지 않음)|엔티티 수정 시 이 필드도 같이 수정함<br>false 로 설정하면 DB에 수정하지 않음<br>false 옵션은 읽기 전용일 때 사용함|true
+>>>table(거의 사용하지 않음)|하나의 엔티티를 두 개 이상의 테이블에 매핑할 때 사용함<br>지정한 필드를 다른 테이블에 매핑할 수 있음|현재 클래스가 매핑된 테이블
+>>>nullable(DDL)|null 값의 허용 여부를 설정함<br>false로 설정하면 DDL 생성 시에 not null 제약조건이 붙음|true
+>>>unique(DDL)|@Table 의 uniqueConstraints 와 같지만 한 컬럼에 간단히 유니크 제약조건을 걸 때 사용함<br>만약 두 컬럼 이상을 사용해서 유니크 제약조건을 사용하려면 클래스 레벨에서 @Table.uniqueConstraints 를 사용해야 함
+>>>columnDefinition(DDL)|DB 컬럼 정보를 직접 줄 수 있음|필드의 자바 타입과 방언 정보를 사용해서 적절한 컬럼 타입을 생성함
+>>>length(DDL)|문자 길이 제약조건, String 타입에만 사용함|255
+>>>precision, scale(DDL)|BigDecimal 타입에서 사용함(BigInteger 도 사용할 수 있음)<br>precision 은 소수점을 포함한 전체 자리수를, scale 은 소수의 자릿수임<br>참고로 double, float 타입에는 적용되지 않음<br>아주 큰 숫자나 정밀한 소수를 다루어야 할 때만 사용함|precision=19, scale=2
+>- @Enumerated
+>>- 자바의 enum 타입을 매핑할 때 사용함
+>>>속성|기능|기본값
+>>>:--|:--|:--
+>>>value|EnumType.ORDINAL: enum 순서를 DB에 저장<br>EnumType.STRING : enum 이름을 DB에 저장| EnumType.ORDINAL
+>>```java
+>>// enum 클래스
+>>enum RoleType {
+>>  ADMIN, USER
+>>}
+>>
+>>// enum 이름으로 매핑
+>>@Enumerated(EnumType.STRING)
+>>private RoleType roleType;
+>>
+>>// enum 사용법
+>>member.setRoleType(RoleType.ADMIN); // -> DB에 문자 ADMIN 으로 저장됨
+>>```
+>>- EnumType.ORDINAL 은 enum 에 정의된 순서대로 ADMIN 은 0, USER 는 1 값이 DB에 저장됨
+>>>- 장점 : DB에 저장되는 데이터 크기가 작음
+>>>- 단점 : 이미 저장된 enum 의 순서를 변경할 수 없음
+>>- EnumType.STRING 은 enum 이름 그대로 DB에 저장됨
+>>>- 장점 : 저장된 enum 의 순서가 바뀌거나 enum 이 추가되어도 안전함
+>>>- 단점 : DB 에 저장되는 데이터 크기가 ORDINAL 에 비해서 큼
+>- @Temporal
+>>- 날짜 타입(java.util.Date, java.util.Calendar) 을 매핑할 때 사용함
+>>>속성|기능|기본값
+>>>:--|:--|:--
+>>>value|TemporalType.DATE : 날짜, 데이터베이스 date 타입과 매핑(예: 2013-10-11)<br>TemporalType.TIME : 시간, 데이터베이스 time 타입과 매핑(예: 11:11:11)<br>TemporalType.TIMESTAMP : 날짜와 시간, 데이터베이스 timestamp 타입과 매핑(예: 2013-10-11 11:11:11)|TemporalType 은 필수로 지정해야 함
+>- @Lob
+>>- DB 의 BLOB, CLOB 타입과 매핑함
+>>- @Lob 에는 지정할 수 있는 속성이 없는 대신에 매핑하는 필드 타입이 문자면 CLOB 로 매핑하고 나머지는 BLOB 로 매핑함
+>>```java
+>>@Lob
+>>private String lobString;
+>>
+>>@Lob
+>>private byte[] lobByte;
+>>```
+>- @Transient
+>>- 이 필드는 매핑하지 않도록 설정하여 DB에 저장하지도 않고 조회하지도 않음
+>>- 객체에 임시로 어떤 값을 보관하고 싶을 때 사용함
+>>```java
+>>@Transient
+>>private Integer temp;
+>>```
+>- @Access
+>>- JPA 가 엔티티에 접근하는 방식을 지정함
+>>>- 필드 접근 : AccessType.FIELD 로 지정하여 필드에 직접 접근함, 필드 접근 권한이 private 여도 접근할 수 있음
+>>>- 프로퍼티 접근 : AccessType.PROPERTY 로 지정하여 접근자(Getter)를 사용함
+```java
+// @Id 가 필드에 있으므로 @Access(AccessType.FIELD) 로 설정한 것과 같으므로 @Access 는 생략 가능함
+@Entity
+@Access(AccessType.FIELD)
+public class Member {
+  @Id
+  private String id;
+
+  private String data1;
+  private String data2;
+  ...
+}
+
+// @Id 가 프로퍼티에 있으므로 @Access(AccessType.PROPERTY) 로 설정한 것과 같으므로 @Access 는 생략 가능함
+@Entity
+@Access(AccessType.PROPERTY)
+public class Member {
+
+  private String id;
+
+  private String data1;
+  private String data2;
+
+  @Id
+  public String getId() {
+    return id;
+  }
+
+  @Column
+  public String getData1() {
+    return data1;
+  }
+
+  public String getData2() {
+    return data2;
+  }
+}
+
+// @Id 가 필드에 있으므로 기본은 필드 접근 방식을 사용하고, getFullName() 만 프로퍼티 접근 방식을 사용함
+// 회원 엔티티를 저장하면 회원 테이블의 FULLNAME 컬럼에 firstName + lastName 의 결과가 저장됨
+@Entity
+public class Member {
+
+  @id
+  private String id;
+
+  @Transient
+  private String firstName;
+
+  @Transient
+  private String lastName;
+
+  @Access(AccessType.PROPERTY)
+  public String getFullName() {
+    return firstName + lastName;
+  }
+  ...
+}
+```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 연관관계 매핑 기초
+
+>### 단방향 연관관계
