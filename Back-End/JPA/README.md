@@ -1831,4 +1831,512 @@ public class Member {
 ## 다양한 연관관계 매핑
 
 >### 다양한 연관관계 매핑 개요
+>- 엔티티의 연관관계 매핑시 3 가지 고려사항
+>>- 다중성
+>>- 단방향, 양방향
+>>- 연관관계의 주인
+>- 다중성
+>>- 다대일 (@ManyToOne)
+>>- 일대다 (@OneTpMany)
+>>- 일대일 (@OneToOne)
+>>- 다대다 (@ManyToMany)
+>- 단방향, 양방향
+>>- 테이블은 외래 키 하나로 조인을 사용해서 양방향으로 쿼리가 가능하므로 사실상 방향이라는 개념이 없음
+>>- 객체는 참조용 필드를 가지고 있는 객체만 연관된 객체를 조회할 수 있음
+>>- 객체 관계에서 한 쪽만 참조하는 것을 단방향 관계라 하고, 서로 참조하는 것을 양방향 관계라 함
+>- 연관관계의 주인
+>>- DB는 외래 키 하나로 두 테이블이 연관관계를 맺으므로 테이블의 연관관계를 관리하는 포인트는 외래 키 하나임
+>>- 반면에 엔티티를 양방향으로 매핑하면 A->B, B->A 2곳에서 서로를 참조하므로 객체의 연관관계를 관리하는 포인트는 2곳임
+>>- JPA는 두 객체 연관관계 중 하나를 정해서 DB 외래 키를 관리하는데 이것을 연관관계의 주인이라 함
+>>- 외래 키를 가진 테이블과 매핑한 엔티티가 외래 키를 관리하는 것이 효율적이므로 보통 이곳을 연관관계의 주인으로 선택함
+>>- 주인이 아닌 방향은 외래 키를 변경할 수 없고 읽기만 가능함
+>>- 연관관계의 주인은 mappedBy 속성을 사용하지 않으며, 연관관계의 주인이 아니면 mappedBy 속성을 사용하고 연관관계의 주인 필드 이름을 값으로 입력해야 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 다대일
+>- 개요
+>>- 다대일 관계의 반대 방향은 항상 일대다 관계고 일대다 관계의 반대 방향은 항상 다대일 관계임
+>>- DB 테이블의 일, 다 관계에서 외래 키는 항상 다쪽에 있으므로 객체 양방향 관계에서 연관관계의 주인은 항상 다쪽임
+>- 다대일 단방향[N:1]
+>```java
+>// 회원 엔티티
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  @Column(name - "MEMBER_ID")
+>  private Long id;
+>
+>  private String username;
+>
+>  @ManyToOne
+>  @JoinColumn(name = "TEAM_ID")
+>  private Team team;
+>  ...
+>}
+>
+>// 팀 엔티티
+>@Entity
+>public class Team {
+>  @Id @GeneratedValue
+>  @Column(name = "TEAM_ID")
+>  private Long id;
+>
+>  private String name;
+>  ...
+>}
+>```
+>>- 회원은 Member.team 으로 팀 엔티티를 참조할 수 있지만 반대로 팀에는 회원을 참조하는 필드가 없으므로 회원과 팀은 다대일 단방향 연관관계임
+>>- @JoinColumn(name = "TEAM_ID") 을 사용하여 Member.team 필드를 TEAM.ID 외래 키와 매핑하여 Member.team 필드로 회원 테이블의 TEAM_ID 외래 키를 관리함
+>- 다대일 양방향[N:1, 1:N]
+>```java
+>// 회원 엔티티
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  @Column(name - "MEMBER_ID")
+>  private Long id;
+>
+>  private String username;
+>
+>  @ManyToOne
+>  @JoinColumn(name = "TEAM_ID")
+>  private Team team;
+>
+>  public void setTeam(Team team) {
+>    this.team = team;
+>
+>    // 무한루프에 빠지지 않도록 체크
+>    if(!team.getMembers().contains(this)) {
+>      team.getMembers().add(this);
+>    }
+>  }
+>}
+>
+>// 팀 엔티티
+>@Entity
+>public class Team {
+>  @Id @GeneratedValue
+>  @Column(name = "TEAM_ID")
+>  private Long id;
+>
+>  private String name;
+>  
+>  @OneToMany(mappedBy = "team")
+>  private List<Member> members = new ArrayList<Member>();
+>
+>  public void addMember(Member member) {
+>    this.members.add(member);
+>    if(member.getTeam() != this) { // 무한루프에 빠지지 않도록 체크
+>      member.setTeam(this);
+>    }
+>  }
+>}
+>```
+>>- 양방향은 외래 키가 있는 쪽이 연관관계의 주인임
+>>>- JPA는 외래 키를 관리할 때 연관관계의 주인만 사용함
+>>>- 주인이 아닌 Team.members 는 조회를 위한 JPQL 이나 객체 그래프를 탐색할 때 사용함
+>>- 양방향 연관관계는 항상 서로를 참조해야 함
+>>>- 항상 서로를 참조하게 하려면 연관관계 편의 메서드를 작성하는 것이 좋음
+>>>- 편의 메서드는 한 곳에만 작성하거나 양쪽 다 작성할 수 있는데, 양쪽에 다 작성하면 무한루프에 빠지므로 주의해야 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 일대일
+>- 개요
+>>- 일대일 관계는 양쪽이 서로 하나의 관계만 가짐
+>>- 일대일 관계의 특징
+>>>- 일대일 관계는 그반 대도 일대일 관계임
+>>>- 일대일 관계는 주 테이블이나 대상 테이블 둘 중 어느곳이나 외래 키를 가질 수 있음
+>>- 일대일 관계는 주 테이블이나 대상 테이블 중에 누가 외래 키를 가질지 선택해야 함
+>- 주 테이블에 외래 키
+>>- 일대일 관계를 구성할 때 객체지향 개발자들은 주 테이블에 외래 키가 있는 것을 선호함
+>>- JPA 도 주 테이블에 외래 키가 있으면 좀 더 편리하게 매핑할 수 있음
+>>- 단방향
+>>```java
+>>@Entity
+>>public class Member {
+>>  @Id @GeneratedValue
+>>  @Column(name = "MEMBER_ID")
+>>  private Long id;
+>>
+>>  private String username;
+>>
+>>  @OneToOne
+>>  @JoinColumn(name = "LOCKER_ID")
+>>  private Locker locker;
+>>  ...
+>>}
+>>
+>>@Entity
+>>public class Locker {
+>>  @Id @GeneratedValue
+>>  @Column(name = "LOCKER_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>  ,,,
+>>}
+>>```
+>>>- 일대일 관계 이므로 객체 매핑에 @OneToOne 을 사용했고 DB에는 LOCKER_ID 외래 키에 유니크 제약 조건을 추가함
+>>- 양방향
+>>```java
+>>@Entity
+>>public class Member {
+>>  @Id @GeneratedValue
+>>  @Column(name = "MEMBER_ID")
+>>  private Long id;
+>>
+>>  private String username;
+>>
+>>  @OneToOne
+>>  @JoinColumn(name = "LOCKER_ID")
+>>  private Locker locker;
+>>  ...
+>>}
+>>
+>>@Entity
+>>public class Locker {
+>>  @Id @GeneratedValue
+>>  @Column(name = "LOCKER_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>
+>>  @OneToOne(mappedBy = "locker")
+>>  private Member member;
+>>  ...
+>>}
+>>```
+>>>- 양방향이므로 연관관계의 주인을 정해야함
+>>>- MEMBER 테이블이 외래 키를 가지고 있으므로 Member 엔티티에 있는 Member.locker 가 연관관계의 주인임
+>>>- 따라서 반대 매핑인 사물함의 Locker.member 는 mappedBy 를 선언해서 연관관계의 주인이 아니라고 설정함
+>- 대상 테이블에 외래 키
+>>- 전통적인 DB 개발자들은 대상 테이블에 외래 키를 두는 것을 선호함
+>>- 테이블 관계를 일대일에서 일대다로 변경할 때 테이블 구조를 그대로 유지할 수 있다는 장점이 있음
+>>- 단방향
+>>>- 일대일 관계 중 대상 테이블에 외래 키가 있는 단방향 관계는 JPA에서 지원하지 않으며 매핑할 수 있는 방법도 없음
+>>>- 단방향 관계를 Locker 에서 Member 방향으로 수정하거나, 양방향 관계를 만들고 Locker 를 연관관계의 주인으로 설정해야 함
+>>- 양방향
+>>```java
+>>@Entity
+>>public class Member {
+>>  @Id @GeneratedValue
+>>  @Column(name = "MEMBER_ID")
+>>  private Long id;
+>>
+>>  private String username;
+>>
+>>  @OneToOne(mappedBy = "member")
+>>  private Locker locker;
+>>  ...
+>>}
+>>
+>>@Entity
+>>public class Locker {
+>>  @Id @GeneratedValue
+>>  @Column(name = "LOCKER_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>
+>>  @OneToOne
+>>  @JoinColumn(name - "MEMBER_ID")
+>>  private Member member;
+>>  ...
+>>}
+>>```
+>>>- 일대일 매핑에서 대상 테이블에 외래 키를 두고 싶으면 이렇게 양방향으로 매핑하고 주 엔티티인 Member 엔티티 대신에 대상 엔티티인 Locker 를 연관관계의 주인으로 만들어서 LOCKER 테이블의 외래 키를 관리하도록 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 다대다 [N:N]
+>- 개요
+>>- 관계형 DB는 정규화된 테이블 2개로 다대다 관계를 표현할 수 없으므로 보통 다대다 관계를 일대다, 다대일 관계로 풀어내는 연결 테이블을 사용함
+>>- 객체는 테이블과 다르게 객체 2개로 다대다 관계를 만들 수 있으므로 @ManyToMany 를 사용하면 다대다 관계를 편리하게 매핑할 수 있음
+>- 다대다: 단방향
+>```java
+>@Entity
+>public class Member {
+>  @Id @Column(name = "MEMBER_ID")
+>  private String id;
+>
+>  private String username;
+>
+>  @ManyToMany
+>  @JoinTable(name = "MEMBER_PRODUCT", joinColumns = @JoinColumn(name = "MEMBER_ID"), inverseJoinColumns = @JoinColumn(name = "PRODUCT_ID"))
+>  private List<Product> products = new ArrayList<Product>();
+>
+>  @Entity
+>  public class Product {
+>    @Id @Column(name = "PRODUCT_ID")
+>    private String id;
+>
+>    private String name;
+>    ...
+>  }
+>}
+>```
+>>- 회원 엔티티와 상품 엔티티를 @ManyToMany 로 매핑함
+>>- @ManyToMany 와 @JoinTable 을 사용하여 연결 테이블을 바로 매핑했기 때문에 회원과 상품을 연결하는 연결 테이블 엔티티 없이 매핑을 완료할 수 있음
+>>- @JoinTable 속성
+>>>- @JoinTable.name : 연결 테이블을 지정함
+>>>- @JoinTable.joinColumns : 현재 방향인 회원과 매핑할 조인 컬럼 정보를 지정함
+>>>- @JoinTable.inverseJoinColumns : 반대 방향인 상품과 매핑할 조인 컬럼 정보를 지정함
+>>- MEMBER_PRODUCT 테이블은 다대다 관계를 일대다, 다대일 관계로 풀어내기 위해 필요한 연결 테이블일 뿐이므로 @ManyToMany 로 매핑했다면 다대다 관계를 사용할때 연결 테이블을 신경 쓰지 않아도 됨
+>>- 저장
+>>```java
+>>public void save() {
+>>  Product productA = new Product();
+>>  productA.setId("productA");
+>>  productA.setName("상품A");
+>>  em.persist(productA);
+>>
+>>  Member member1 = new Member();
+>>  member1.setId("member1");
+>>  member1.setUsername("회원1");
+>>  member1.getProducts().add(productA); // 연관관계 설정
+>>  em.persist(member1);
+>>}
+>>```
+>>- 탐색
+>>```java
+>>public void find() {
+>>  Member member = em.find(Member.class, "member1");
+>>  List<Product> products = member.getProducts(); // 객체그래프탐색
+>>  for(Product product : products) {
+>>    System.out.println("product.name = " + product.getName());
+>>  }
+>>}
+>>```
+>- 다대다: 양방향
+>```java
+>@Entity
+>public class Product {
+>  @Id
+>  private String id;
+>
+>  @ManyToMany(mappedBy = "products") // 역방향 추가
+>  private List<Member> members;
+>  ...
+>}
+>```
+>>- 다대다 매핑이므로 역방향도 @ManyToMany 를 사용하고 연관관계의 주인이 아닌 곳에 mappedBy 를 설정함
+>>- 다대다 양방향 연관관계 설정
+>>```java
+>>member.getProducts().add(product);
+>>product.getMembers().add(member);
+>>```
+>>- 양방향 연관관계는 연관관계 편의 메서드를 추가해서 관리하는 것이 편리함
+>>```java
+>>public void addProduct(Product product) {
+>>  ...
+>>  products.add(product);
+>>  product.getMembers().add(this);
+>>}
+>>```
+>>>- 연관관계 편의 메서드를 추가하면 member.addProduct(product) 처럼 간단히 양방향 연관관계를 설정할 수 있음
+>>- 역방향 탐색
+>>```java
+>>public void findInverse() {
+>>  Product product = em.find(Product.class, "productA");
+>>  List<Member> members = product.getMembers();
+>>  for(Member member : members) {
+>>    System.out.println("member = " + member.getUsername());
+>>  }
+>>}
+>>```
+>>>- 양방향 연관관계 덕분에 역방향으로 객체 그래프를 탐색할 수 있음
+>- 다대다: 매핑의 한계와 극복, 연결 엔티티 사용
+>>- 개요
+>>>- @ManyToMany 를 사용하면 연결 테이블을 자동으로 처리해주므로 도메인 모델이 단순해지고 여러 가지로 편리해지지만 실무에서 사용하기에는 한계가 있음
+>>>- 연결 테이블에 단순히 주문한 회원 아이디와 상품 아이디만 있는 것이 아니라 주문 수량 칼럼이나 주문한 날짜 같은 추가적인 컬럼이 더 필요한데 그러면 주문 엔티티나 상품 엔티티에는 추가한 컬럼들을 매핑할 수 없기 때문에 @ManyToMany 를 사용할 수 없음
+>>>- 결국 연결 테이블을 매핑하는 연결 엔티티를 만들고 이곳에 추가할 컬럼들을 매핑하고 엔티티 간의 관계도 테이블 관계처럼 다대다에서 일대다, 다대일 관계로 풀어야함
+>>- 엔티티 코드
+>>```java
+>>@Entity
+>>public class Member {
+>>  @Id @Column(name = "MEMBER_ID")
+>>  private String id;
+>>
+>>  // 역방향
+>>  @OneToMany(mappedBy = "member")
+>>  private List<MemberProduct> memberProducts;
+>>  ...
+>>}
+>>
+>>@Entity
+>>public class Product {
+>>  @Id @Column(name = "PRODUCT_ID")
+>>  private String id;
+>>
+>>  private String name;
+>>  ...
+>>}
+>>
+>>@Entity
+>>@IdClass(MemberProductId.class)
+>>public class MemberProduct {
+>>  @Id
+>>  @ManyToOne
+>>  @JoinColumn(name = "MEMBER_ID")
+>>  private Member member; // MemberProductId.member 와 연결
+>>
+>>  @Id
+>>  @ManyToOne
+>>  @JoinColumn(name = "PRODUCT_ID")
+>>  private Product product; // MemberProductId.product 와 연결
+>>
+>>  private int orderAmount;
+>>  ...
+>>}
+>>
+>>public class MemberProductId implements Serializable {
+>>  private String member; // MemberProduct.member와 연결
+>>  private String product; // MemberProduct.product와 연결
+>>
+>>  @Override
+>>  public boolean equals(Object o) {...}
+>>
+>>  @Override
+>>  public int hashCode() {...}
+>>}
+>>```
+>>>- @IdClass 를 사용해서 복합 기본 키를 매핑함
+>>- 복합 기본키
+>>>- 회원상품 엔티티는 기본 키가 MEMBER_ID 와 PRODUCT_ID 로 이루어진 복합 기본키(간단히 복합 키)임
+>>>- JPA 에서 복합 키를 사용하려면 별도의 식별자 클래스를 만들어야 하며 엔티티에 @IdClass 를 사용해서 식별자 클래스를 지정하면 됨
+>>- 복합 키를 위한 식별자 클래스의 특징
+>>>- 복합 키는 별도의 식별자 클래스로 만들어야 함
+>>>- Serializable 을 구현해야 함
+>>>- equals 와 hashCode 메서드를 구현해야 함
+>>>- 기본 생성자가 있어야 함
+>>>- 식별자 클래스는 public 이어야 함
+>>>- @IdClass 를 사용하는 방법 외에 @EmbeddedId 를 사용하는 방법도 있음
+>>- 식별 관계
+>>>- 회원상품은 회원과 상품의 기본 키를 받아서 자신의 기본 키로 사용함
+>>>- 부모 테이블의 기본 키를 받아서 자신의 기본 키 + 외래 키로 사용하는 것을 DB 용어로 식별 관계라 함
+>>- 저장하는 코드
+>>```java
+>>public void save() {
+>>  // 회원 저장
+>>  Member member1 = new Member();
+>>  member1.setId("member1");
+>>  member1.setUsername("회원1");
+>>  em.persist(member1);
+>>
+>>  // 상품 저장
+>>  Product productA = new Product();
+>>  productA.setId("ProductA");
+>>  productA.setName("상품1");
+>>  em.persist(productA);
+>>
+>>  // 회원상품 저장
+>>  MemberProduct memberProduct = new MemberProduct();
+>>  memberProduct.setMember(member1);   // 주문 회원 - 연관관계 설정
+>>  memberProduct.setProduct(productA); // 주문 상품 - 연관관계 설정
+>>  memberProduct.setOrderAmount(2);    // 주문 수량
+>>  em.persist(memberProduct);
+>>}
+>>```
+>>>- 회원상품 엔티티를 만들면서 연관된 회원 엔티티와 상품 엔티티를 설정함
+>>>- 회원상품 엔티티는 DB에 저장될 때 연관된 회원의 식별자와 상품의 식별자를 가져와서 자신의 기본 키 값으로 사용함
+>>- 조회하는 코드
+>>```java
+>>public void find() {
+>>  // 기본 키 값 생성
+>>  MemberProductId memberProductId = new MemberProductId();
+>>  memberProductId.setMember("member1");
+>>  memberProductId.setProduct("productA");
+>>
+>>  MemberProduct memberProduct = em.find(MemberProduct.class, memberProductId);
+>>
+>>  Member member = memberProduct.getMember();
+>>  Product product = memberProduct.getProduct();
+>>
+>>  System.out.println("member = " + member.getUsername());
+>>  System.out.println("product = " + product.getName());
+>>  System.out.println("orderAmount = " + memberProduct.getOrderAmount());
+>>}
+>>```
+>>>- 지금까지는 기본 키가 단순해서 기본 키를 위한 객체르 사용하는 일이 없었지만 복합 키는 항상 식별자 클래스를 만들어야 함
+>>>- 복합 키를 사용하는 것은 단순히 컬럼 하나만 기본 키로 사용하는 것과 비교해서 ORM 매핑에서 처리할 일이 상당히 많아짐
+>>>- 복합 키를 위한 식별자 클래스도 만들어야 하고 @IdClass 또는 @EmbeddedId 도 사용해야 하며 식별자 클래스에 equals, hashCode 도 구현해야 함
+>- 다대다: 새로운 기본 키 사용
+>>- 개요
+>>>- 추천하는 기본 키 생성 전략은 DB에서 자동으로 생성해주는 대리 키를 Long 값으로 사용하는 것인데 간편하고 거의 영구히 쓸 수 있으며 비즈니스에 의존하지 않으며 ORM 매핑 시에 복합 키를 만들지 않아도 되므로 간단히 매핑을 완성할 수 있다는 장점이 있음
+>>- 연결 테이블에 새로운 기본 키를 사용한 코드
+>>```java
+>>@Entity
+>>public class Order {
+>>  @Id @GeneratedValue
+>>  @Column(name = "ORDER_ID")
+>>  private Long Id;
+>>
+>>  @ManyToOne
+>>  @JoinColumn(name = "MEMBER_ID")
+>>  private Member member;
+>>
+>>  @ManyToOne
+>>  @JoinColumn(name = "PRODUCT_ID")
+>>  private Product product;
+>>
+>>  private int orderAmount;
+>>  ...
+>>}
+>>```
+>>>- 회원상품(MemberProduct) 보다는 주문(Order, ORDER 는 일부 DB에 예약어로 잡혀 있어 ORDERS를 사용하기도 함)이라는 이름이 더 어울리므로 변경함
+>>>- 대리 키를 사용함으로써 이전에 보았던 식별 관계에 복합 키를 사용하는 것보다 매핑이 단순하고 이해하기 쉬움
+>>- 저장하고 조회하는 코드
+>>```java
+>>public void save() {
+>>  // 회원 저장
+>>  Member member1 = new Member();
+>>  member1.setId("member1");
+>>  member1.setUsername("회원1");
+>>  em.persist(member1);
+>>
+>>  // 상품 저장
+>>  Product productA = new Product();
+>>  productA.setId("ProductA");
+>>  productA.setName("상품1");
+>>  em.persist(productA);
+>>
+>>  // 회원상품 저장
+>>  Order order = new Order();
+>>  order.setMember(member1);   // 주문 회원 - 연관관계 설정
+>>  order.setProduct(productA); // 주문 상품 - 연관관계 설정
+>>  order.setOrderAmount(2);    // 주문 수량
+>>  em.persist(order);
+>>}
+>>
+>>public void find() {
+>>  Long orderId = 1L;
+>>  Order order = em.find(Order.class, orderId);
+>>
+>>  Member member = order.getMember();
+>>  Product product = order.getProduct();
+>>
+>>  System.out.println("member = " + member.getUsername());
+>>  System.out.println("product = " + product.getName());
+>>  System.out.println("orderAmount = " + order.getOrderAmount());
+>>}
+>>```
+>>>- 식별자 클래스를 사용하지 않아서 조회 코드가 단순해 졌음
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 고급 매핑
+
+>### 상속 관계 매핑
 >- 
