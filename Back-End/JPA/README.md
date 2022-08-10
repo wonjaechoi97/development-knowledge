@@ -2343,5 +2343,240 @@ public class Member {
 
 ## 고급 매핑
 
+>### 고급 매핑 개요
+>- 상속 관계 매핑
+>>- 객체의 상속 관계를 DB에 어떻게 매핑하는지 다룸
+>- @MappedSuperclass
+>>- 등록일, 수정일 같이 여러 엔티티에서 공통으로 사용하는 매핑 정보만 상속받고 싶을때 사용
+>- 복합 키와 식별 관계 매핑
+>>- DB의 식별자가 하나 이상일 때 매핑하는 방법을 다룸
+>>- DB 설계에서 이야기하는 식별 비식별 관계에 대해서 다룸
+>- 조인 테이블
+>>- 테이블은 외래 키 하나로 연관관계를 맺을 수 있지만 연관관계를 관리하는 연결 테이블을 두는 방법도 있는데, 연결 테이블을 매핑하는 방법을 다룸
+>- 엔티티 하나에 여러 테이블 매핑하기
+>>- 보통 엔티티 하나에 테이블 하나를 매핑하지만 엔티티 하나에 여러 테이블을 매핑하는 방법도 있음
+
+<br>
+
+[목차로 이동](#목차)
+
 >### 상속 관계 매핑
->- 
+>- 개요
+>>- RDB 에는 객체지향 언어에서 다루는 상속이라는 개념이 없는 대신 슈퍼타입 서브타입 관계 모델링 기법이 객체의 상속 개념과 가장 유사함
+>>- ORM 에서 이야기하는 상속 관계 매핑은 객체의 상속 구조와 DB의 슈퍼타입 서브타입 관계를 매핑하는 것임
+>>- 슈퍼타입 서브타입 논리 모델을 실제 물리 모델인 테이블로 구현할 때 선택할 수 있는 3가지 방법
+>>>- 각각의 테이블로 변환
+>>>>- 각각을 모두 테이블로 만들고 조회할 때 조인을 사용함, JPA 에서 조인 전략이라 함
+>>>- 통합 테이블로 변환
+>>>>- 테이블을 하나만 사용해서 통합함, JPA 에서 단일 테이블 전략이라 함
+>>>- 서브타입 테이블로 변환
+>>>>- 서브 타입마다 하나의 테이블을 만듬, JPA 에서 구현 클래스마다 테이블 전략이라 함
+>- 조인 전략
+>>- 조인 전략은 엔티티 각각을 모두 테이블로 만들고 자식 테이블이 부모 테이블의 기본 키를 받아서 기본 키 + 외래 키로 사용하는 전략이므로 조회시 조인을 자주 사용함
+>>- 주의할 점으로 객체는 타입을 구분할 수 있지만 테이블은 타입의 개념이 없으므로 타입을 구분하는 컬럼을 추가해야함
+>>```java
+>>@Entity
+>>@Inheritance(strategy = InheritanceType.JOINED)
+>>@DiscriminatorColumn(name = "DTYPE")
+>>public abstract class Item {
+>>  @Id @GeneratedValue
+>>  @Column(name = "ITEM_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>  private int price;
+>>  ...
+>>}
+>>
+>>@Entity
+>>@DiscriminatorValue("A")
+>>public class Album extends Item {
+>>  private String artist;
+>>  ...
+>>}
+>>
+>>@Entity
+>>@DiscriminatorValue("M")
+>>public class Movie extends Item {
+>>  private String director;
+>>  private String actor;
+>>  ...
+>>}
+>>```
+>>>- @Inheritance(strategy = InheritanceType.JOINED)
+>>>>- 상속 매핑은 부모 클래스에 @Inheritance 를 사용하면서 속성으로 매핑 전략을 지정해야 함
+>>>>- 조인 전략은 InheritanceType.JOINED 을 사용함
+>>>- @DiscriminatorColumn(name = "DTYPE")
+>>>>- 부모 클래스에 구분 칼럼을 지정하며 해당 칼럼으로 저장된 자식 테이블을 구분할 수 있음
+>>>>- 기본값이 DTYPE 이므로 @DiscriminatorColumn 으로 줄여도 됨
+>>>- @DiscriminatorValue("M")
+>>>>- 엔티티를 저장할 때 구분 칼럼에 입력할 값을 지정함
+>>- 기본값으로 자식 테이블은 부모 테이블의 ID 컬럼명을 그대로 사용하는데, 만약 자식 테이블의 기본 키 컬럼명을 변경하고 싶으면 @PrimaryKeyJoinColumn 을 사용하면 됨
+>>```java
+>>@Entity
+>>@DiscriminatorValue("B")
+>>@PrimaryKeyJoinColumn(name = "BOOK_ID") // ID 재정의
+>>public class Book extends Item {
+>>  private String author;
+>>  private String isbn;
+>>}
+>>```
+>>- 조인 전략 정리
+>>>- 장점
+>>>>- 테이블이 정규화됨
+>>>>- 외래 키 참조 무결성 제약조건을 활용할 수 있음
+>>>>- 저장공간을 효율적으로 사용함
+>>>- 단점
+>>>>- 조회할 때 조인이 많이 사용되므로 성능이 저하될 수 있음
+>>>>- 조회 쿼리가 복잡함
+>>>>- 데이터를 등록한 INSERT SQL 을 두 번 실행함
+>>>- 특징
+>>>>- JPA 표준 명세는 구분 컬럼을 사용하도록 하지만 하이버네이트를 포함한 몇몇 구현체는 구분 컬럼(@DiscriminatorColumn) 없이도 동작함
+>>>- 관련 어노테이션
+>>>>- @PrimaryKeyJoinColumn
+>>>>- @DiscriminatorColumn
+>>>>- @DiscriminatorValue
+>- 단일 테이블 전략
+>>- 이름 그대로 테이블을 하나만 사용하고 구분 컬럼(DTYPE) 으로 어떤 자식 데이터가 저장되었는지 구분함
+>>- 조회할 때 조인을 사용하지 않으므로 일반적으로 가장 빠름
+>>- 주의할 점으로 자식 엔티티가 매핑한 컬럼은 모두 null을 허용해야 한다는 점임
+>>>- Book 엔티티를 저장하면 ITEM 테이블의 AUTHOR, ISBN 컬럼만 사용하고 다른 엔티티와 매핑된 ARTIST, DIRECTOR, ACTOR 칼럼은 사용하지 않으므로 null 이 입력되기 때문임
+>>```java
+>>@Entity
+>>@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+>>@DiscriminatorColumn(name = "DTYPE")
+>>public abstract class Item {
+>>  @Id @GeneratedValue
+>>  @Column(name = "ITEM_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>  private String price;
+>>  ...
+>>}
+>>
+>>@Entity
+>>@DiscriminatorValue("A")
+>>public class Album extends Item {...}
+>>
+>>@Entity
+>>@DiscriminatorValue("M")
+>>public class Movie extends Item {...}
+>>
+>>@Entity
+>>@DiscriminatorValue("B")
+>>public class Book extends Item {...}
+>>```
+>>>- InheritanceType.SINGLE_TABLE 로 지정하면 단일 테이블 전략을 사용함
+>>>- 테이블 하나에 모든 것을 통합하므로 구분 컬럼을 필수로 사용해야함
+>>- 단일 테이블 전략 정리
+>>>- 장점
+>>>>- 조인이 필요 없으므로 일반적으로 조회 성능이 빠름
+>>>>- 조회 쿼리가 단순함
+>>>- 단점
+>>>>- 자식 엔티티가 매핑한 컬럼은 모두 null 을 허용해야 함
+>>>>- 단일 테이블에 모든 것을 저장하므로 테이블이 커질 수 있고, 그로인해 상황에 따라서 조회 성능이 오히려 느려질 수 있음
+>>>- 특징
+>>>>- 구분 컬럼을 꼭 사용해야 하므로 @DiscriminatorColumn 을 꼭 설정해야 함
+>>>>- @DiscriminatorValue 를 지정하지 않으면 기본으로 엔티티 이름을 사용함
+>- 구현 클래스마다 테이블 전략
+>>- 자식 엔티티마다 테이블을 만들며, 자식 테이블 각각에 필요한 컬럼이 모두 있음
+>>```java
+>>@Entity
+>>@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+>>public abstract class Item {
+>>  @Id @GeneratedValue
+>>  @Column(name = "ITEM_ID")
+>>  private Long id;
+>>
+>>  private String name;
+>>  private int price;
+>>}
+>>
+>>@Entity
+>>public class Album extends Item {...}
+>>
+>>@Entity
+>>public class Album extends Item {...}
+>>
+>>@Entity
+>>public class Album extends Item {...}
+>>```
+>>>- InheritanceType.TABLE_PER_CLASS 를 선택하면 구현 클래스마다 테이블 전략을 사용함
+>>>- 이 전략은 자식 엔티티마다 테이블을 만들며, 일반적으로 추천하지 않는 전략임
+>>- 구현 클래스 마다 테이블 전략
+>>>- 장점
+>>>>- 서브 타입을 구분해서 처리할 때 효과적임
+>>>>- not null 제약조건을 사용할 수 있음
+>>>- 단점
+>>>>- 여러 자식 테이블을 함께 조회할 때 성능이 느림(SQL 에 UNION 을 사용해야 함)
+>>>>- 자식 테이블을 통합해서 쿼리하기 어려움
+>>>- 특징
+>>>>- 구분 컬럼을 사용하지 않음
+>>- 이 전략은 DB 설계자와 ORM 전문가 둘 다 추천하지 전략이므로 조인이나 단일 테이블 전략을 고려하는것을 추천함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### @MappedSuperclass
+>- 지금까지 학습한 상속 관계 매핑은 부모 클래스와 자식 클래스를 모두 DB 테이블과 매핑했음
+>- 부모 클래스는 테이블과 매핑하지 않고 부모 클래스를 상속받는 자식 클래스에게 매핑 정보만 제공하고 싶으면 @MappedSuperclass 를 사용하면 됨
+>- @MappedSuperclass 는 비유를 하자면 추상 클래스와 비슷한데 @Entity 는 실제 테이블과 매핑 되지만 @MappedSuperclass 는 실제 테이블과 매핑되지 않고 단순히 매핑 정보를 상속할 목적으로만 사용됨
+>```java
+>@MappedSuperclass
+>public abstract class BaseEntity {
+>  @Id @GeneratedValue
+>  private Long id;
+>  private String name;
+>}
+>
+>@Entity
+>public class Member extends BaseEntity {
+>  // ID 상속
+>  // NAME 상속
+>  private String email;
+>  ...
+>}
+>
+>@Entity
+>public class Seller extends BaseEntity {
+>  // ID 상속
+>  // NAME 상속
+>  private String shopName;
+>  ...
+>}
+>```
+>>- BaseEntity 에는 객체들이 주로 사용하는 공통 매핑 정보를 정의함
+>>- 자식 엔티티들은 상속을 통해 BaseEntity 의 매핑 정보를 물려받음
+>>- 여기서 BaseEntity 는 테이블과 매핑할 필요가 없고 자식 엔티티에게 공통으로 사용되는 매핑 정보만 제공하면 되므로 @MappedSuperclass 를 사용함
+>>- 부모로부터 물려받은 매핑 정보를 재정의하려면 @AttributeOverrides 나 @AttributeOverride 를 사용하고, 연관관계를 재정의하려면 @AssociationOverrides 나 @AssociationOverride 를 사용함
+>>```java
+>>// 부모에게 상속받은 id 속성의 컬럼명을 MEMBER_ID 로 재정의함
+>>@Entity
+>>@AttributeOverride(name = "id", column = @Column(name = "MEMBER_ID"))
+>>public class Member extends BaseEntity {...}
+>>
+>>// 둘 이상의 재정의 하려면 @AttributeOverrides 를 사용함
+>>@Entity
+>>@AttributeOverrides({
+>>  @AttributeOverride(name = "id", column = @Column(name = "MEMBER_ID")),
+>>  @AttributeOverride(name = "name", column = @Column(name = "MEMBER_NAME"))
+>>})
+>>public class Member extends BaseEntity {...}
+>>```
+>- @MappedSuperclass 의 특징
+>>- 테이블과 매핑하지 않고 자식 클래스에 엔티티의 매핑 정보를 상속하기 위해 사용함
+>>- @MappedSuperclass 로 지정한 클래스는 엔티티가 아니므로 em.find() 나 JPQL 에서 사용할 수 없음
+>>- 이 클래스를 직접 생성해서 사용할 일은 거의 없으므로 추상 클래스로 만드는 것을 권장함
+>- 정리
+>>- @MappedSuperclass 는 테이블과는 관계가 없고 단순히 엔티티가 공통으로 사용하는 매핑 정보를 모아주는 역할을 할 뿐임
+>>- ORM 에서 이야기하는 진정한 상속 매핑은 이전에 학습한 객체 상속을 DB의 슈퍼타입 서브타입 관계와 매핑하는 것임
+>>- @MappedSuperclass 를 사용하면 등록일자, 수정일자, 등록자, 수정자 같은 여러 엔티티에서 공통으로 사용하는 속성을 효과적으로 관리할 수 있음
+>>- 엔티티는 엔티티이거나 @MappedSuperclass 로 지정한 클래스만 상속받을 수 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 복합 키와 식별 관게 매핑
