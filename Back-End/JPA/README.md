@@ -56,7 +56,16 @@
 >>- [복합 키와 식별 관게 매핑](#복합-키와-식별-관게-매핑)
 >>- [조인 테이블](#조인-테이블)
 >>- [엔티티 하나에 여러 테이블 매핑](#엔티티-하나에-여러-테이블-매핑)
->- 
+>- [프록시와 연관관계 정리](#프록시와-연관관계-정리)
+>>- [프록시와 연관관계 정리 개요](#프록시와-연관관계-정리-개요)
+>>- [프록시](#프록시)
+>>- [즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩)
+>>- [지연 로딩 활용](#지연-로딩-활용)
+>>- [영속성 전이: CASCADE](#영속성-전이-cascade)
+>>- [고아 객체](#고아-객체)
+>>- [영속성 전이 + 고아 객체, 생명주기](#영속성-전이--고아-객체-생명주기)
+>- [값 타입](#값-타입)
+>>- [값 타입 개요](#값-타입-개요)
 
 <br>
 
@@ -3200,5 +3209,422 @@ public class Member {
 
 ## 프록시와 연관관계 정리
 
+>### 프록시와 연관관계 정리 개요
+>- 프록시와 즉시 로딩, 지연 로딩
+>>- 객체는 객체 그래프로 연관된 객체들을 탐색하는데, 객체가 DB에 저장되어 있으므로 연관된 객체를 마음껏 탐색하기는 어려움
+>>- JPA 구현체들은 이 문제를 해겷하기위해 프록시라는 기술을 사용함
+>>- 프록시를 사용하면 연관된 객체를 처음부터 DB에서 조회하는 것이 아니라, 실제 사용하는 시점에 DB에서 조회할 수 있음
+>>- 하지만 자주 함께 사용하는 객체들은 조인을 사용해서 함께 조회하는 것이 효과적임
+>>- JPA 는 즉시 로딩과 지연 로딩이라는 방법으로 둘을 모두 지원함
+>- 영속성 전이와 고아 객체
+>>- JPA 는 연관된 객체를 함께 저장하거나 함께 삭제할 수 있는 영속성 전이와 고아 객체 제거라는 편리한 기능을 제공함
+
+<br>
+
+[목차로 이동](#목차)
+
 >### 프록시
->- 
+>- 개요
+>>- 엔티티를 조회할 때 연관된 엔티티들이 항상 사용되는 것은 아님
+>>>- 예를 들어 회원 엔티티를 조회할 때 연관된 팀 엔티티는 비즈니스 로직에 따라 사용될 때도 있지만 그렇지 않을 때도 있음
+>>```java
+>>// 회원 엔티티
+>>@Entity
+>>public class Member {
+>>  private String username;
+>>
+>>  @ManyToOne
+>>  private Team team;
+>>
+>>  public Team getTeam() {
+>>    return team;
+>>  }
+>>  public String getUsername() {
+>>    return username;
+>>  }
+>>}
+>>
+>>// 팀 엔티티
+>>@Entity
+>>public class Team {
+>>  private String name;
+>>
+>>  public String getNmae() {
+>>    return name;
+>>  }
+>>  ...
+>>}
+>>
+>>// 회원과 팀 정보를 출력하는 비즈니스 로직
+>>public void printUserAndTeam(String memberId) {
+>>  Member member = em.find(Member.class, memberId);
+>>  Team team = member.getTeam();
+>>  System.out.println("회원 이름: " + member.getUsername());
+>>  System.out.println("소속팀: " + team.getName());
+>>}
+>>
+>>// 회원 정보만 출력하는 비즈니스 로직
+>>public String printUser(String memberId) {
+>>  Member member = em.find(Member.class, memberId);
+>>  System.out.println("회원 이름: " + member.getUsername());
+>>}
+>>```
+>>>- printUser() 메서드는 회원 엔티티만 사용하므로 em.find() 로 회원 엔티티를 조회할 때 회원과 연관된 팀 엔티티(Member.team)까지 DB에서 함께 조회해 두는 것은 효율적이지 않음
+>>>- JPA는 이런 문제를 해결하려고 엔티티가 실제 사용될 때까지 DB 조회를 지연하는 방법을 제공하는데, 이것을 지연 로딩이라 함
+>>>- 지연 로딩 기능을 사용하려면 실제 엔티티 객체 대신에 DB 조회를 지연할 수 있는 가짜 객체가 필요한데 이것을 프록시 객체라 함
+>- 프록시 기초
+>>- 개요
+>>>- JPA에서 식별자로 엔티티 하나를 조회할 때는 EntityManager.find() 를 사용하는데, 이 메서드는 영속성 컨텍스트에 엔티티가 없으면 DB를 조회함
+>>>>- 엔티티를 직접 조회하면 조회한 엔티티를 실제 사용하든 사용하지 않든 DB를 조회하게 됨
+>>>- 엔티티를 실제 사용하는 시점까지 DB 조회를 미루고 싶으면 EntityManager.getReference() 메서드를 사용하면 됨
+>>>>- 이 메서드를 호출하면 JPA는 DB를 조회하지 않고 실제 엔티티 객체도 생성하지 않는 대신에 DB 접근을 위임한 프록시 객체를 반환함
+>>- 프록시의 특징
+>>>- 프록시 클래스는 실제 클래스를 상속 받아서 만들어져 실제 클래스와 겉 모양이 같으므로 사용하는 입장에서는 진짜 객체인지 프록시 객체인지 구분하지 않고 사용하면 됨
+>>>- 프록시 객체는 실제 객체에 대한 참조(target)를 보관하고 프록시 객체의 메서드를 호출하면 프록시 객체는 실제 객체의 메서드를 호출함
+>>- 프록시 객체의 초기화
+>>>- 프록시 객체는 member.getName() 처럼 실제 사용될 때 DB를 조회해서 실제 엔티티 객체를 생성하는데 이것을 프록시 객체의 초기화라고 함
+>>- 프록시 초기화 예제
+>>```java
+>>//MemberProxy 반환
+>>Member member = em.getReference(Member.class "id1");
+>>member.getName(); //1. getName();
+>>
+>>// 프록시 클래스 예상 코드
+>>class MemberProxy extends Member {
+>>  Member target = null; // 실제 엔티티 참조
+>>  public String getName() {
+>>    if(target == null) {
+>>      // 2. 초기화 요청
+>>      // 3. DB 조회
+>>      // 4. 실제 엔티티 생성 및 참조 보관
+>>      this.target = ...;
+>>    }
+>>
+>>    // 5. target.getName();
+>>    return target.getName();
+>>  }
+>>}
+>>```
+>>>- 프록시의 초기화 과정 분석
+>>>>1. 프록시 객체에 member.getName() 을 호출해서 실제 데이터를 조회함
+>>>>2. 프록시 객체는 실제 엔티티가 생성되어 있지 않으면 영속성 컨텍스트에 실제 엔티티 생성을 요청하는데 이것을 초기화라 함
+>>>>3. 영속성 컨텍스트는 DB를 조회해서 실제 엔티티 객체를 생성함
+>>>>4. 프록시 객체는 생성된 실제 엔티티 객체의 참조를 Member target 멤버변수에 보관함
+>>>>5. 프록시 객체는 실제 엔티티 객체의 getName() 을 호출해서 결과를 반환함
+>>- 프록시의 특징
+>>>- 프록시 객체는 처음 사용할 때 한 번만 초기화됨
+>>>- 프록시 객체를 초기화한다고 프록시 객체가 실제 엔티티로 바뀌는 것은 아니고 프록시 객체가 초기화되면 프록시 객체를 통해서 실제 엔티티에 접근할 수 있음
+>>>- 프록시 객체는 원본 엔티티를 상속받은 객체이므로 타입 체크 시에 주의해서 사용해야 함
+>>>- 영속성 컨텍스트에 찾는 엔티티가 이미 있으면 DB를 조회할 필요가 없으므로 em.getReference() 를 호출해도 프록시가 아닌 실제 엔티티를 반환함
+>>>- 초기화는 영속성 컨텍스트의 도움을 받아야 가능하므로 영속성 컨텍스트의 도움을 받을 수 없는 준영속 상태의 프록시를 초기화하면 문제가 발생하는데 하이버네이트는 org.hibernate.LazyInitializationException 예외를 발생시킴
+>- 프록시와 식별자
+>>- 엔티티를 프록시로 조회할 때 식별자 값을 파라미터로 전달하는데 프록시 객체는 이 식별자 값을 보관함
+>>- 프록시 객체는 식별자 값을 가지고 있으므로 식별자 값을 조회하는 team.getId() 를 호출해도 프록시를 초기화하지 않음
+>>>- 엔티티 접근 방식을 프로퍼티(@Access(AccessType.PROPERTY))로 설정한 경우에만 초기화하지 앟음
+>>- 엔티티 접근 방식을 필드(@Access(AccessType.FILED))로 설정하면 JPA는 getId() 메서드가 id만 조회하는 메서드인지 다른 필드까지 활용해서 어떤 일을 하는 메서드인지 알지 못하므로 프록시 객체를 초기화함
+>>```java
+>>Member member = em.find(Member.class, "member1");
+>>Team team = em.getReference(Team.class, "team1"); // SQL 을 실행하지 않음
+>>member.setTeam(team);
+>>```
+>>- 연관관계를 설정할 때는 식별자 값만 허용하므로 프록시를 사용하면 DB 접근 횟수를 줄일 수 있음
+>>- 연관관계를 설정할 때는 엔티티 접근 방식을 필드로 설정해도 프록시를 초기화하지 않음
+>- 프록시 확인
+>>- JPA가 제공하는 PersistenceUnitUtil.isLoad(Object entity) 메서드를 사용하면 프록시 인스턴스의 초기화 여부를 확인할 수 있음
+>>- 아직 초기화되지 않은 프록시 인스턴스는 false 를 반환하며 이미 초기화되었거나 프록시 인스턴스가 아니면 true를 반환함
+>>```java
+>>boolean isLoad = em.getEntityManagerFactory()
+>>                   .getPersistenceUnitUtil().isLoaded(entity);
+>>// 또는 boolean isLoad = em.emf.getPersistenceUnitUtil().isLoaded(entity);
+>>
+>>System.out.println("isLoad = " + isLoad); // 초기화 여부 확인
+>>```
+>>- 조회한 엔티티가 진짜 엔티티인지 프록시로 조회한 것인지 확인하려면 클래스명을 직접 출력해보면 됨
+>>- 클래스 명 뒤에 ...javassist .. 라 되어 있으면 프록시인 것을 확을 확인할 수 있으며 프록시를 생성하는 라이브러리에 따라 출력 결과는 달라질 수 있음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 즉시 로딩과 지연 로딩
+>- 개요
+>>- 프록시 객체는 주로 연관된 엔티티를 지연로딩할 때 사용함
+>>- JPA는 개발자가 연관된 엔티티의 조회 시점을 선택할 수 있도록 두 가지 방법을 제공함
+>>>- 즉시 로딩
+>>>>- 엔티티를 조회할 때 연관된 엔티티도 함께 조회함
+>>>>- @ManyToOne(fetch = FetchType.EAGER)
+>>>- 지연 로딩
+>>>>- 연관된 엔티티를 실제 사용할 때 조회함
+>>>>- @ManyToOne(fetch = FetchType.LAZY)
+>- 즉시 로딩
+>>- 즉시 로딩(EAGER LOADING)을 사용하려면 @ManyToOne 의 fetch 속성을 FetchType.EAGER 로 지정함
+>>- 즉시 로딩 시 두 테이블을 조회해야 하므로 쿼리를 2번 실행할 것 같지만, 대부분의 JPA 구현체는 즉시 로딩을 최적화하기 위해 가능하면 조인 쿼리를 사용함
+>- 지연 로딩
+>>- 지연 로딩(LAZY LOADING)을 사용하려면 @ManyToOne 의 fetch 속성을 FetchType.LAZY 로 지정함
+>>- em.find(Member.class, "member1") 을 호출하면 회원만 조회하고 팀은 조회하지 않는 대신에 조회한 회원읜 team 멤버변수에 프록시 객체를 넣어둠
+>>- Team team = member.getTeam(); 호출 시 반환되는 팀 객체는 프록시 객체이며, 이 프록시 객체는 실제 사용될 떄까지 데이터 로딩을 미루므로 지연 로딩이라 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 지연 로딩 활용
+>- 프록시와 컬렉션 래퍼
+>>- 하이버네이트는 엔티티를 영속 상태로 만들 때 엔티티에 컬렉션이 있으면 컬렉션을 추적하고 관리할 목적으로 원본 컬렉션을 하이버네이트가 제공하는 내장 컬렉션으로 변경하는데 이것을 컬렉션 래퍼라 함
+>>- 엔티티를 지연 로딩하면 프록시 객체를 사용해서 지연 로딩을 수행하지만 주문 내역 같은 컬렉션은 컬렉션 래퍼가 지연 로딩을 처리해줌
+>>>- 컬렉션 래퍼도 컬렉션에 대한 프록시 역할을 함
+>- JPA 기본 페치 전략
+>>- fetch 속성의 기본 설정값
+>>>- @ManyToOne, @OneToOne : 즉시 로딩(FetchType.EAGER)
+>>>- @OneToMany, @ManyToMany : 지연 로딩(FetchType.LAZY)
+>>- JPA 의 기본 페치 전략은 연관된 엔티티가 하나면 즉시 로딩을, 컬렉션이면 지연 로딩을 사용함
+>>>- 컬렉션을 로딩하는 것은 비용이 많이 들고 잘못하면 너무 많은 데이터를 로딩할 수 있기 때문임
+>>- 추천하는 방법으로 모든 연관관계에 지연 로딩을 사용하고 애플리케이션 개발이 어느 정도 완료단계에 왔을 때 실제 사용하는 상황을 보고 꼭 필요한 곳에만 즉시 로딩을 사용하도록 최적화하는것이 추천됨
+>>>- SQL 을 직접 사용하면 각각의 테이블을 조회해서 처리하다가 조인으로 한 번에 조회하도록 변경하려면 많은 SQL과 애플리케이션 코드를 수정해야 하므로 JPA 처럼 유연한 최적화가 어려움
+>- 컬렉션에 FetchType.EAGER 사용 시 주의점
+>>- 컬렉션을 하나 이상 즉시 로딩하는 것은 권장하지 않음
+>>>- 컬렉션과 조인한다는 것은 DB 테이블로 보면 일대다 조인이므로 결과 데이터가 다 쪽에 있는 수만큼 증가하게 되는데, 서로 다른 컬렉션을 2개 이상 조인할 때 두 테이블의 데이터 수의 곱만큼 데이터수가 증가하므로 결과적으로 애플리케이션 성능이 저하될 수 있음
+>>- 컬렉션 즉시 로딩은 항상 외부 조인을 사용할것
+>>>- 다대일 관계인 회원 테이블과 팀 테이블을 조인할 때 회원 테이블의 외래 키에 not null 제약조건을 걸어두면 모든 회원은 팀에 소속되므로 항상 내부 조인을 사용하도됨
+>>>- 팀 테이블에서 회원 테이블로 일대다 관계를 조인할 때 회원이 한 명도 없는 팀을 내부 조인하면 팀까지 조회되지 않는 문제가 발생하는데 DB 제약조건으로 이런 상황을 막을 순 없으므로 JPA는 일대다 관계를 즉시 로딩할 때 항상 외부 조인을 사용함
+>>- FetchType.EAGER 설정과 조인 전략
+>>>- @ManyToOne, @OneToOne
+>>>>- (optional = false) : 내부 조인
+>>>>- (optional = true)  : 외부 조인
+>>>- @OneToMany, @ManyToMany
+>>>>- (optional = false) : 외부 조인
+>>>>- (optional = true)  : 외부 조인
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 영속성 전이: CASCADE
+>- 개요
+>```java
+>@Entity
+>public class Perent {
+>  @Id @GeneratedValue
+>  private Long id;
+>
+>  @OneToMany(mappedBy = "parent")
+>  private List<Child> children = new ArrayList<Child>();
+>  ...
+>}
+>
+>@Entity
+>public class Child {
+>  @Id @GeneratedValue
+>  private Long id;
+>
+>  @ManyToOne
+>  private Parent parent;
+>  ...
+>}
+>
+>// 부모 자식 저장
+>private static void saveNoCascase(EntityManager em) {
+>  // 부모 저장
+>  Parent parent = new Parent();
+>  em.persist(parent);
+>
+>  // 1번 자식 저장
+>  Child child1 = new Child();
+>  child1.setParent(parent); // 자식 -> 부모 연관관계 설정
+>  parent.getChildren().add(child1); // 부모 -> 자식
+>  em.persist(child1);
+>
+>  // 2번 자식 저장
+>  Child child2 = new Child();
+>  child2.setParent(parent); // 자식 -> 부모 연관관계 설정
+>  parent.getChildren().add(child2); // 부모 -> 자식
+>  em.persist(child2);
+>}
+>```
+>>- 특정 엔티티를 영속 상태로 만들 때 연관된 엔티티도 함께 영속 상태로 만들고 싶으면 영속성 전이기능을 사용함
+>>- JPA 는 CASCADE 옵션으로 영속성 전이를 제공하는데, 부모 엔티티를 저장할 때 자식 엔티티도 함께 저장할 수 있음
+>>- JPA 에서 엔티티를 저장할 때 연관된 모든 엔티티는 영속 상태여야 하므로 부모 엔티티를 영속 상태로 만들고 자식 엔티티도 각각 영속 상태로 만듬
+>>- 영속성 전이를 사용하면 부모만 영속 상태로 만들면 연관된 자식까지 한 번에 영속 상태로 만들 수 있음
+>- 영속성 전이: 저장
+>```java
+>@Entity
+>public class Parent {
+>  ...
+>  @OneToMany(mappedBy = "parent", cascade = CascadeType.PERSIST)
+>  private List<Child> children = new ArrayList<Child>();
+>  ...
+>}
+>```
+>>- 부모를 영속화할 때 연관된 자식들도 함께 영속화하라고 cascade = CascadeType.PERSIST 옵션을 설정하여 간편하게 부모와 자식 엔티티를 한 번에 영속화할 수 있음
+>>```java
+>>private static void saveWithCascase(EntityManager em) {
+>>
+>>  Child child1 = new Child();
+>>  Child child2 = new Child();
+>>
+>>  Parent parent = new Parent();
+>>  child1.setParent(parent); // 연관관계 추가
+>>  child2.setParent(parent); // 연관관계 추가
+>>  parent.getChildren().add(child1);
+>>  parent.getChildren().add(child2);
+>>
+>>  // 부모 설정, 연관된 자식들 저장
+>>  em.persist(child2);
+>>}
+>>```
+>>- 부모만 영속화하면 CascadeType.PERSIST 로 설정한 자식 엔티티까지 함께 영속화해서 저장함
+>>- 영속성 전이는 연관관계를 매핑하는 것과는 아무 관련이 없고 단지 엔티티를 영속화할 때 연관된 엔티티도 같이 영속화하는 편리함을 제공할 뿐임
+>- 영속성 전이: 삭제
+>>- 저장한 부모와 자식 엔티티를 모두 제거하려면 각각의 엔티티를 하나씩 제거해야 함
+>>```java
+>>Parent findParent = em.find(Parent.class, 1L);
+>>Child findChild1 = em.find(Child.class, 1L);
+>>Child findChild2 = em.find(Child.class, 2L);
+>>
+>>em.remove(findChild1);
+>>em.remove(findChild2);
+>>em.remove(findParent);
+>>```
+>>- CascadeType.REMOVE 로 설정하고 부모 엔티티만 삭제하면 연관된 자식 엔티티도 함께 삭제됨
+>>- 삭제 순서는 외래 키 제약조건을 고려해서 자식을 먼저 삭제하고 부모를 삭제함
+>- CASCADE 의 종류
+>```java
+>public enum CascadeType {
+>  ALL,      // 모두 적용
+>  PERSIST,  // 영속
+>  MERGE,    // 병합
+>  REMOVE,   // 삭제
+>  REFRESH,  // REFRESH
+>  DETACH    // DETACH
+>}
+>
+>// 여러 속성 사용법
+>cascade = {CascadeType.PERSIST, CascadeType.REMOVE}
+>```
+>>- CascadeType.PERSIST, CascadeType.REMOVE 는 em.persist(), em.remove() 를 실행할 때 바로 전이가 발생하지 않고 플러시를 호출할 때 전이가 발생함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 고아 객체
+>- 개요
+>>- JPA 는 부모 엔티티와 연관관계가 끊어진 자식 엔티티를 자동으로 삭제하는 기능을 제공하는데 이것을 고아 객체(ORPHAN) 제거라 함
+>>- 부모 엔티티의 컬렉션에서 자식 엔티티의 참조만 제거하면 자식 엔티티가 자동으로 삭제됨
+>>```java
+>>@Entity
+>>public class Parent {
+>>  @Id @GeneratedValue
+>>  private Long id;
+>>
+>>  @OneToMany(mappedBy = "parent", orphanRemoval = true)
+>>  private List<Child> childrent = new ArrayList<Child>();
+>>  ...
+>>}
+>>
+>>// 샤용 코드
+>>Parent parent1 = em.find(Parent.class, id);
+>>parent1.getChildrent().remove(0); // 자식 엔티티를 컬렉션에서 제거
+>>```
+>>- 고아 객체 제거 기능은 영속성 컨텍스트를 플러시할 때 적용되므로 플러시 시점에 DELETE SQL 이 실행됨
+>>- 고아 객체 정리
+>>>- 고아 객체 제거는 참조가 제거된 엔티티는 다른 곳에서 참조하지 않는 고아 객체로 보고 삭제하는 기능이므로 참조하는 곳이 하나일 때만 사용해야함
+>>>- 특정 엔티티가 개인 소유하는 엔티티에만 이 기능을 적용해야 함
+>>>>- 만약 삭제한 엔티티를 다른 곳에서도 참조한다면 문제가 발생할 수 있는 이유로 @OneToOne, @OneToMany 에만 사용할 수 있음
+>>>- 부모를 제거하면 자식은 고아가 되므로 자식도 같이 제거되는데, CascadeType.REMOVE 를 설정한 것과 같음
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 영속성 전이 + 고아 객체, 생명주기
+>- 일반적으로 엔티티는 EntityManager.persist() 를 통해 영속화되고 EntityManager.remove() 를 통해 제거됨
+>>- 이것은 엔티티 스스로 생명주기를 관리한다는 의미임
+>- CascadeType.ALL + orphanRemoval = true 를 동시에 사용하면 부모 엔티티를 통해서 자식의 생명주기를 관리할 수 있음
+>>- 자식을 저장하려면 부모에 등록만 하면 되고, 삭제하려면 부모에서 제거하면 된다는 의미임
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 값 타입
+
+>### 값 타입 개요
+>- JPA 의 데이터 타입을 가장 크게 분류하면 엔티티 타입과 값 타입으로 나눌 수 있음
+>>- 엔티티 타입은 @Entity 로 정의하는 객체이고, 값 타입은 int, Integer, String 처럼 단순히 값으로 사용하는 자바 기본 타입이나 객체를 말함
+>>- 엔티티 타입은 식별자를 통해 지속해서 추적할 수 있지만, 값 타입은 식별자가 없고 숫자나 문자같은 속성만 있으므로 추적할 수 없음
+>- 값 타입의 3가지 타입
+>>- 기본값 타입 : 자바가 제공하는 기본 데이터 타입
+>>>- 자바 기본 타입(int, double)
+>>>- 래퍼 클래스(Integer)
+>>>- String
+>>- 임베디드 타입(복합 값 타입) : JPA 에서 사용자가 직접 정의한 값 타입
+>>- 컬렉션 값 타입
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 임베디드 타입(복합 값 타입)
+>- 개요
+>>- 새로운 값 타입을 직접 정의해서 사용할 수 있는데 JPA 에서는 이것을 임베디드 타입이라 함
+>>- 직접 정의한 임베디드 타입도 값 타입임
+>```java
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  private Long id;
+>  private String name;
+>
+>  // 근무 기간
+>  @Temporal(TemporalType.DATE) java.util.Date startDate;
+>  @Temporal(TemporalType.DATE) java.util.Date endDate;
+>
+>  // 집 주소 표현
+>  private String city;
+>  private String street;
+>  private String zipcode;
+>}
+>```
+>>- 회원이 상세한 데이터를 그대로 가지고 있는 것은 객체지향적이지 않으며 응집력만 떨어트림
+>>- 근무 기간, 주소 같은 타입이 있다면 코드가 더 명확해짐
+>```java
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  private Long id;
+>  private String name;
+>
+>  @Embedded Period workPeriod;    // 근무 기간
+>  @Embedded Address homeAddress;  // 집 주소 표현
+>}
+>
+>@Embeddable
+>public class Period {
+>  @Temporal(TemporalType.DATE) java.util.Date startDate;
+>  @Temporal(TemporalType.DATE) java.util.Date endDate;
+>  //..
+>
+>  public boolean isWork(Date date) {
+>    //.. 값 타입을 위한 메서드를 정의할 수 있음
+>  }
+>}
+>
+>@Embeddable
+>public class Address {
+>  @Column(name="city") // 매핑할 컬럼 정의 가능
+>  private String city;
+>  private String street;
+>  private String zipcode;
+>}
+>```
+>>- 임베디드 타입을 사용하기 위한 2가지 어노테이션, 둘 중 하나는 생략 가능함
+>>>- @Embeddable : 값 타입을 정의하는 곳에 표시
+>>>- @Embedded : 값 타입을 사용하는 곳에 표시
+>>- 임베디드 타입은 기본 생성자가 필수임
+>>- 임베디드 타입을 포함한 모든 값 타입은 엔티티의 생명주기에 의존하므로 엔티티와 임베디드 타입의 관계는 컴포지션 관계임
+>- 임베디드 타입과 테이블 매핑
+>>- 임데디드 타입은 엔티티의 값일 뿐이므로 값이 속한 엔티티의 테이블에 매핑함
+>>- 
