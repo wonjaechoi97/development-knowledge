@@ -49,6 +49,14 @@
 >>- [다대일](#다대일)
 >>- [일대일](#일대일)
 >>- [다대다 [N:N]](#다대다-nn)
+>- [고급 매핑](#고급-매핑)
+>>- [고급 매핑 개요](#고급-매핑-개요)
+>>- [상속 관계 매핑](#상속-관계-매핑)
+>>- [@MappedSuperclass](#mappedsuperclass)
+>>- [복합 키와 식별 관게 매핑](#복합-키와-식별-관게-매핑)
+>>- [조인 테이블](#조인-테이블)
+>>- [엔티티 하나에 여러 테이블 매핑](#엔티티-하나에-여러-테이블-매핑)
+>- 
 
 <br>
 
@@ -2580,3 +2588,617 @@ public class Member {
 [목차로 이동](#목차)
 
 >### 복합 키와 식별 관게 매핑
+>- 식별 관계 VS 비식별 관계
+>>- DB 테이블 사이의 관계는 외래 키가 기본 키에 포함되는지 여부에 따라 식별 관계와 비식별 관계로 구분함
+>>- 식별 관계
+>>>- 식별 관계는 부모 테이블의 기본 키를 내려받아서 자식 테이블의 기본 키 + 외래 키로 사용하는 관계임
+>>- 비식별 관계
+>>>- 비식별 관계는 부모 테이블의 기본 키를 받아서 자식 테이블의 외래 키로만 사용하는 관계임
+>>>- 외래 키에 NULL 을 허용하는지에 따라 나뉨
+>>>>- 필수적 비식별 관계(Mandatory)
+>>>>>- 외래 키에 NULL 을 허용하지 않음
+>>>>>- 연관관계를 필수적으로 맺어야 함
+>>>>- 선택적 비식별 관계(Optional)
+>>>>>- 외래 키에 NULL 을 허용함
+>>>>>- 연관관계를 맺을지 말지 선택할 수 있음
+>>- 최근에는 비식별 관계를 주로 사용하고 꼭 필요한 곳에만 식별 관계를 사용하는 추세이며, JPA는 식별 관계와 비식별 관계를 모두 지원함
+>- 복합 키: 비식별 관계 매핑
+>```java
+>// 기본 키를 구성하는 칼럼이 하나면 다음처럼 단순하게 매핑함
+>@Entity
+>public class Hello {
+>  @Id
+>  private String id;
+>}
+>
+>// 둘 이상의 컬럼으로 구성된 복합 기본 키는 다음처럼 매핑하면 될 것 같지만 매핑 오류가 발생함
+>// JPA 에서 식별자를 둘 이상 사용하려면 별도의 식별자 클래스를 만들어야 함
+>@Entity
+>public class Hello {
+>  @Id
+>  private String id1;
+>  @Id
+>  private String id2; // 실행 시점에 매핑 예외 발생
+>}
+>```
+>>- 개요
+>>>- JPA는 영속성 컨텍스트에 엔티티를 보관할 때 엔티티의 식별자를 키로 사용함
+>>>- 식별자를 구분하기 위해 equals 와 hashCode 를 사용해서 동등성 비교를 함
+>>>- 식별자 필드가 하나일 때는 보통 자바의 기본 타입을 사용하므로 문제가 없지만, 식별자 필드가 2개 이상이면 별도의 식별자 클래스를 만들고 그곳에 equals 와 hashCode 를 구현해야 함
+>>>- JPA 는 복합 키를 지원하기 위해 @IdClass 와 @EmbeddedId 2가지 방법을 제공하는데 @IdClass 는 관계형 DB에 가까운 방법이고 @EmbeddedId 는 좀 더 객체지향에 가까운 방법임
+>>- @IdClass
+>>```java
+>>// 기본 키를 복합 키로 구성했으므로 복합 키를 매핑하기 위해 식별자 클래스를 별도로 만들어야 함
+>>@Entity
+>>@IdClass(ParentId.class)
+>>public class Parent {
+>>  @Id
+>>  @Column(name = "PARENT_ID1")
+>>  private String id1; // ParentId.id1 과 연결
+>>
+>>  @Id
+>>  @Column(name = "PARENT_ID2")
+>>  private String id2; // ParentId.id2 와 연결
+>>}
+>>
+>>// 식별자 클래스
+>>public class ParentId implements Serializable {
+>>  private String id1; // Parent.id1 매핑
+>>  private String id2; // Parent.id2 매핑
+>>
+>>  public ParentId() {
+>>  }
+>>
+>>  public ParentId(String id1, String id2) {
+>>    this.id1 = id1;
+>>    this.id2 = id2;
+>>  }
+>>
+>>  @Override
+>>  public boolean equals(Object o) {...}
+>>  @Override
+>>  public int hashCode() {...}
+>>}
+>>```
+>>>- @IdClass 를 사용할 때 식별자 클래스의 조건
+>>>>- 식별자 클래스의 속성명과 엔티티에서 사용하는 식별자의 속성명이 같아야 함
+>>>>- Serializable 인터페이스를 구현해야 함
+>>>>- equals, hashCode 를 구현해야 함
+>>>>- 기본 생성자가 있어야 함
+>>>>- 식별자 클래스는 public 이어야 함
+>>>- 복합 키를 사용하는 엔티티를 저장
+>>>```java
+>>>Parent parent = new Parent();
+>>>parent.setId1("myId1"); // 식별자
+>>>parent.setId2("myId2"); // 식별자
+>>>parent.setName("parentName");
+>>>em.persist(parent);
+>>>```
+>>>>- 식별자 클래스인 ParentId 가 보이지 않는데, em.persist() 를 호출하면 영속성 컨텍스트에 엔티티를 등록하기 직전에 내부에서 Parent.id1, Parent.id2 값을 이용해서 식별자 클래스인 ParentId 를 생성하고 영속성 컨텍스트의 키로 사용함
+>>>- 복합 키로 조회
+>>>```java
+>>>ParentId parentId = new ParentId("myId1", "myId2");
+>>>Parent parent = em.find(Parent.class, parentId);
+>>>```
+>>>- 자식 클래스 추가
+>>>```java
+>>>@Entity
+>>>public class Child {
+>>>  @Id
+>>>  private String id;
+>>>
+>>>  @ManyToOne
+>>>  @JoinColumns({
+>>>    @JoinColumn(name = "PARENT_ID1", referencedColumnName = "PARENT_ID1"),
+>>>    @JoinColumn(name = "PARENT_ID2", referencedColumnName = "PARENT_ID2")
+>>>  })
+>>>  private Parent parent;
+>>>}
+>>>```
+>>>>- 부모 테이블의 기본 키 컬럼이 복합 키이므로 자식 테이블의 외래 키도 복합 키임
+>>>>- 외래 키 매핑 시 여러 컬럼을 매핑해야 하므로 @JoinColumns 어노테이션을 사용하고 각각의 외래 키 컬럼을 @JoinColumn 으로 매핑함
+>>>>- @JoinColumn 의 name 속성과 referencedColumnName 속성의 값이 같으면 referencedColumnName 은 생략해도 됨
+>>- @EmbeddedId
+>>>- @IdClass 가 DB에 맞춘 방법이라면 @EmbeddedId 는 좀 더 객체지향적인 방법임
+>>```java
+>>// 엔티티에서 식별자 클래스를 직접 사용하고 @EmbeddedId 어노테이션을 사용함
+>>@Entity
+>>public class Parent {
+>>  @EmbeddedId
+>>  private ParentId id;
+>>  
+>>  private String name;
+>>}
+>>
+>>// 식별자 클래스
+>>@Embeddable
+>>public class ParentId implements Serializable {
+>>  @Column(name = "PARENT_ID1")
+>>  private String id1;
+>>  @Column(name = "PARENT_ID2")
+>>  private String id2;
+>>  
+>>  // equals and hashCode 구현
+>>  ...
+>>}
+>>```
+>>>- @EmbeddedId 를 적용한 식별자 클래스는 식별자 클래스에 기본 키를 직접 매핑함
+>>>- @EmbeddedId 를 적용한 식별자 클래스의 조건
+>>>>- @Embeddable 어노테이션을 붙여줘야 함
+>>>>- Serializable 인터페이스를 구현해야 함
+>>>>- equals, hashCode 를 구현해야 함
+>>>>- 기본 생성자가 있어야 함
+>>>>- 식별자 클래스는 public 이어야 함
+>>>- @EmbeddedId 를 사용하여 엔티티를 저장
+>>>```java
+>>>Parent parent = new Parent();
+>>>ParentId parentId = new ParentId("myId1", "myId2");
+>>>parent.setId(parentId);
+>>>parent.setName("parentName");
+>>>em.persist(parent);
+>>>```
+>>>>- 식별자 클래스 parentId를 직접 생성해서 사용함
+>>>- 엔티티를 조회
+>>>```java
+>>>ParentId parentId = new ParentId("myId1", "myId2");
+>>>Parent parent = em.find(Parent.class, parentId);
+>>>```
+>>>>- 조회 코드도 식별자 클래스 parentId 를 직접 사용함
+>>- 복합 키와 equals(), hashCode()
+>>>- 영속성 컨텍스트는 엔티티의 식별자를 키로 사용해서 엔티티를 관리하며 식별자를 비교할 때 equals() 와 hashCode() 를 사용하므로 식별자 객체의 동등성이 지켜지지 않으면 예상과 다른 엔티티가 조회되거나 엔티티를 찾을 수 없는 등 영속성 컨텍스트가 엔티티를 관리하는 데 심각한 문제가 발생하므로 복합 키는 equals() 와 hashCode() 를 필수로 구현해야 함
+>>>- 식별자 클래스는 보통 equals() 와 hashCode() 를 구현할 때 모든 필드를 사용함
+>>- @IdClass vs @EmbeddedId
+>>>- @EmbeddedId 가 @IdClass 와 비교해서 더 객체지향적이고 중복도 없어서 좋아보이긴 하지만 특정 상황에 JPQL 이 조금 더 길어질 수 있음
+>>>```java
+>>>em.createQuery("select p.id.id1, p.id.id2 from Parent p"); // @EmbeddedId
+>>>em.createQuery("select p.id1, p.id2 from Parent p"); // @IdClass
+>>>```
+>- 복합 키: 식별 관계 매핑
+>>- @IdClass 와 식별 관계
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @Column(name = "PARENT_ID")
+>>  private String id;
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>@IdClass(ChildId.class)
+>>public class Child {
+>>  @Id
+>>  @ManyToOne
+>>  @JoinColumn(name = "PARENT_ID")
+>>  public Parent parent;
+>>
+>>  @Id @Column(name = "CHILE_ID")
+>>  private String childId;
+>>
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 자식ID
+>>public class ChildId implements Serializable {
+>>  private String parent;  // Child.parent 매핑
+>>  private String childId; // Child.childId 매핑
+>>
+>>  // equals, hashCode
+>>  ...
+>>}
+>>
+>>// 손자
+>>@Entity
+>>@IdClass(GrandChildId.class)
+>>public class GrandChild {
+>>  @Id
+>>  @ManyToOne
+>>  @JoinColumns({
+>>    @JoinColumn(name = "PARENT_ID"),
+>>    @JoinColumn(name = "CHILD_ID")
+>>  })
+>>  public Child child;
+>>
+>>  @Id @Column(name = "GRANDCHILE_ID")
+>>  private String id;
+>>  
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 손자ID
+>>public class GrandChildId implements Serializable {
+>>  private ChildId child;  // GrandChild.parent 매핑
+>>  private String id;      // GrandChild.id 매핑
+>>
+>>  // equals, hashCode
+>>  ...
+>>}
+>>```
+>>>- 식별 관계는 기본 키와 외래 키를 같이 매핑해야 하므로 식별자 매핑인 @Id 와 연관관계 매핑인 @ManyToOne 을 같이 사용하면 됨
+>>- @EmbeddedID 와 식별 관계
+>>>- @EmbeddedId 로 식별 관계를 구성할 때는 @MapsId 를 사용해야 함
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @Column(name = "PARENT_ID")
+>>  private String id;
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>public class Child {
+>>  @EmbeddedId
+>>  private ChildId id;
+>>
+>>  @MapsId("parentId") // ChildId.parentId 매핑
+>>  @ManyToOne
+>>  @JoinColumn(name = "PARENT_ID")
+>>  public Parent parent;
+>>
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 자식ID
+>>@Embeddable
+>>public class ChildId implements Serializable {
+>>  private String parentId; // @MapsId("parentId") 로 매핑
+>>
+>>  @Column(name = "CHILD_ID")
+>>  private String id;
+>>
+>>  // equals, hashCode
+>>  ...
+>>}
+>>
+>>// 손자
+>>@Entity
+>>public class GrandChild {
+>>  @EmbeddedId
+>>  private GrandChildId id;
+>>
+>>  @MapsId("childId") // GrandChildId.childId 매핑
+>>  @ManyToOne
+>>  @JoinColumns({
+>>    @JoinColumn(name = "PARENT_ID"),
+>>    @JoinColumn(name = "CHILD_ID")
+>>  })
+>>  public Child child;
+>>  
+>>  private String name;
+>>  ...
+>>}
+>>
+>>// 손자ID
+>>public class GrandChildId implements Serializable {
+>>  private ChildId childId; // @MapsId("childId") 로 매핑
+>>
+>>  @Column(name = "GRANDCHILD_ID")
+>>  private String id;
+>>
+>>  // equals, hashCode
+>>  ...
+>>}
+>>```
+>>>- @EmbeddedId 는 식별 관계로 사용할 연관관계의 속성에 @MapsId 를 사용하면 됨
+>>>- @MapsId 는 외래 키와 매핑한 연관관계를 기본 키에도 매핑하겠다는 의미임
+>>>- @MapsId 의 속성 값은 @EmbeddedId 를 사용한 식별자 클래스의 기본 키 필드를 지정하면 됨
+>- 비식별 관계로 구현
+>```java
+>// 부모
+>@Entity
+>public class Parent {
+>  @Id @GeneratedValue
+>  @Column(name = "PARENT_ID")
+>  private Long id;
+>  private String name;
+>  ...
+>}
+>
+>// 자식
+>@Entity
+>public class Child {
+>  @Id @GeneratedValue
+>  @Column(name = "CHILD_ID")
+>  private Long id;
+>  private String name;
+>
+>  @ManyToOne
+>  @JoinColumn(name = "PARENT_ID")
+>  private Parent parent;
+>  ...
+>}
+>
+>// 손자
+>@Entity
+>public class GrandChild {
+>  @Id @GeneratedValue
+>  @Column(name = "GRANDCHILD_ID")
+>  private Long id;
+>  private String name;
+>
+>  @ManyToOne
+>  @JoinColumn(name = "CHILD")
+>  private Child child;
+>  ...
+>}
+>```
+>>- 식별 관계의 복합 키를 사용한 코드와 비교하면 매핑도 쉽고 코드도 단순함
+>>- 복합 키가 없으므로 복합 키 클래스를 만들지 않아도 됨
+>- 일대일 식별 관계
+>```java
+>// 부모
+>@Entity
+>public class Board {
+>  @Id @GeneratedValue
+>  @Column(name = "BOARD_ID")
+>  private Long id;
+>
+>  private String title;
+>
+>  @OntToOne(mappedBy = "board")
+>  private BoardDetail boardDetail;
+>  ...
+>}
+>
+>// 자식
+>@Entity
+>public class BoardDetail {
+>  @Id
+>  private Long boardId;
+>
+>  @MapsId // BoardDetail.boardId 매핑
+>  @OneToOne
+>  @JoinColumn(name = "BOARD_ID")
+>  private Board board;
+>
+>  private String content;
+>  ...
+>}
+>```
+>>- BoardDetail 처럼 식별자가 단순히 컬럼 하나면 @MapsId 를 사용하고 속성 값은 비워두면 됨
+>>- 이때 @MapsId 는 @Id 를 사용해서 식별자로 지정한 BoardDetail.boardId 와 매핑됨
+>>- 일대일 식별 관계 저장
+>>```java
+>>public void save() {
+>>  Board board = new Board();
+>>  board.setTitle("제목");
+>>  em.persist(board);
+>>
+>>  BoardDetail boardDetail = new BoardDetail();
+>>  boardDetail.setContent("내용");
+>>  boardDetail.setBoard(board);
+>>  em.persist(boardDetail);
+>>}
+>>```
+>- 식별, 비식별 관계의 장단점
+>>- DB 설계 관점에서 식별 관계보다 비식별 관계를 선호하는 이유
+>>>- 식별 관계는 부모 테이블의 기본 키를 자식 테이블로 전파하면서 자식 테이블의 기본 키 컬럼이 점점 늘어나므로 결국 조인할 때 SQL이 복잡해지고 기본 키 인덱스가 불필요하게 커질 수 있음
+>>>- 식별 관계는 2개 이상의 컬럼을 합해서 복합 기본 키를 만들어야 하는 경우가 많음
+>>>- 식별 관계를 사용할 때 기본 키로 비즈니스 의미가 있는 자연 키 컬럼을 조합하는 경우가 많은 반면, 비식별 관계의 기본 키는 비즈니스와 전혀 관계없는 대리 키는 주로 사용함
+>>>>- 비즈니스 요구사항은 시간이 지남에 따라 언젠가는 변하는데 식별 관계의 자연 키 컬럼들이 자식에 손자까지 전파되면 변경하기 힘듬
+>>>- 식별 관계는 부모 테이블의 기본 키를 자식 테이블의 기본 키로 사용하므로 비식별 관계보다 테이블 구조가 유연하지 못함
+>>- 객체 관계 매핑의 관점에서 비식별 관계를 선호하는 이유
+>>>- 일대일 관계를 제외하고 식별 관계는 2개 이상의 컬럼을 묶은 복합 기본 키를 사용하기 때문에 JPA 에서 복합 키는 별도의 복합 키 클래스를 만들어 사용해야 하므로 컬럼이 하나인 기본 키를 매핑하는 것보다 많은 노력이 필요함
+>>>- 비식별 관계의 기본 키는 주로 대리 키를 사용하는데 JPA 는 @GenerateValue 처럼 대리 키를 생성하기 위한 편리한 방법을 제공함
+>>- 식별 관계의 장점
+>>>- 기본 키 인덱스를 활용하기 좋고, 상위 테이블들의 기본 키 컬럼을 자식, 손자 테이블이 가지고 있으므로 특정 상황에 조인 없이 하위 테이블만으로 검색을 완료할 수 있으므로 꼭 필요한 곳에는 적절하게 사용하는 것이 좋음
+>>- 정리
+>>>- ORM 신규 프로젝트 진행시 비식별 관계를 사용하고 기본 키는 Long 타입의 대리 키를 사용하는것이 좋음
+>>>>- 대리 키는 비즈니스와 아무 관련이 없으므로 비즈니스가 변경되어도 유연한 대처가 가능하다는 장점이 있음
+>>>>- JPA 는 @GenerateValue 를 통해 간편하게 대리 키를 생성할 수 있고 식별자 컬럼이 하나여서 쉽게 매핑할 수 있음
+>>>>- 식별자의 데이터 타입으로 Integer 는 21억이 한계이므로 데이터를 많이 저장하면 문제가 발생할 수 있는 반면에 Long은 920경 정도로 아주 커서 안전함
+>>>- 선택적 비식별 관계보다는 필수적 비식별 관계를 사용하는 것이 좋음
+>>>>- 선택적인 비식별 관계는 NULL 을 허용하므로 조인할 때에 외부 조인을 사용해야 함
+>>>>- 필수적 관계는 NOT NULL 로 항상 관계가 있다는 것을 보장하므로 내부 조인만 사용해도 됨
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 조인 테이블
+>- 개요
+>>- DB 테이블의 연관관계를 설정하는 두가지 방법
+>>>- 조인 컬럼 사용 (외래 키)
+>>>- 조인 테이블 사용 (테이블 사용)
+>>- 조인 컬럼 사용
+>>>- 테이블 간에 관계는 주로 조인 컬럼이라 부르는 외래 키 컬럼을 사용해서 관리함
+>>>- 예를 들어 회원과 사물함이 있는데 각각 테이블에 데이터를 등록했다가 회원이 원할 때 사물함을 선택할 수 있다고 가정하면 회원이 사물함을 사용하기 전까지는 아직 둘 사이에 관계가 없으므로 MEMBER 테이블의 LOCKER_ID 외래 키에 null을 입력해두어야하는데 외래 키에 null을 허용하는 관계를 선택적 비식별 관계라 함
+>>>- 선택적 비식별 관계는 외래 키에 null을 허용하므로 회원과 사물함을 조인할 때 외부 조인을 사용해야하는데 실수로 내부 조인을 사용하면 사물함과 관계가 없는 회원은 조회되지 않는다는 점과 회원과 사물함이 아주 가끔 관계를 맺는다면 외래 키 값 대부분이 null로 저장되는 단점이 있음
+>>- 조인 테이블 사용
+>>>- 조인 컬럼을 사용하는 방법은 단순히 외래 키 컬럼만 추가해서 연관관계를 맺지만 조인 테이블을 사용하는 방법은 연관관계를 관리하는 조인 테이블을 추가하고 여기서 두 테이블의 외래 키를 가지고 연관관계를 정리하므로 MEMBER 와 LOCKER 에는 연관관계를 관리하기 위한 외래 키 컬럼이 없음
+>>>- 회원과 사물함 데이터를 각각 등록했다가 회원이 원할 때 사물함을 선택하면 조인 테이블에만 값을 추가하면 됨
+>>>- 테이블을 하나 추가해야 하므로 관리해야 하는 테이블이 늘어나고 회원과 사물함 두 테이블을 조인하려면 조인 테이블까지 추가로 조인해야 함
+>>- 기본은 조인 컬럼을 사용하고 필요하다고 판단될 때 조인 테이블을 사용하는 것이 추천됨
+>>- 설명될 내용
+>>>- 객체와 테이블을 매핑할 때 조인 컬럼은 @JoinColumn 으로 매핑하고 조인 테이블은 @JoinTable 로 매핑함
+>>>- 조인 테이블은 주로 다대다 관계를 일대다, 다대일 관계로 풀어내기 위해 사용하지만 일대일, 일대다, 다대일 관계에서도 사용함
+>- 일대일 조인 테이블
+>>- 일대일 관계를 만들려면 조인 테이블의 외래 키 컬럼 각각에 총 2개의 유니크 제약조건을 걸어야 함 (PARENT_ID 는 기본 키)
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @GeneratedValue
+>>  @Column(name = "PARENT_ID")
+>>  private Long id;
+>>  private String name;
+>>
+>>  @OneToOne
+>>  @JoinTable(name = "PARENT_CHILD",
+>>          joinColumns = @JoinColumn(name = "PARENT_ID"),
+>>          inverseJoinColumns = @JoinColumn(name = "CHILD_ID")
+>>  )
+>>  private Child child;
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>public class Child {
+>>  @Id @GeneratedValue
+>>  @Column(name = "CHILD_ID")
+>>  private Long id;
+>>  private String name;
+>>  // 양방향 매핑
+>>  @OneToOne(mappedBy="child")
+>>  private Parent parent;
+>>  ...
+>>}
+>>```
+>>>- 부모 엔티티에서 @JoinColumn 대신 @JoinTable 을 사용함
+>>>- @JoinTable 의 속성
+>>>>- name : 매핑할 조인 테이블 이름
+>>>>- joinColumns : 현재 엔티티를 참조하는 외래 키
+>>>>- inverseJoinColumns : 반대방향 엔티티를 참조하는 외래 키
+>- 일대다 조인 테이블
+>>- 일대다 관계를 만들려면 조인 테이블의 컬럼 중 다(N)와 관련된 컬럼인 CHILD_ID 에 유니크 제약 조건을 걸어야 함(CHILD_ID 는 기본 키이므로 유니크 제약조건이 걸려 있음)
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @GeneratedValue
+>>  @Column(name = "PARENT_ID")
+>>  private Long id;
+>>  private String name;
+>>
+>>  @OneToMany
+>>  @JoinTable(name = "PARENT_CHILD",
+>>          joinColumns = @JoinColumn(name = "PARENT_ID"),
+>>          inverseJoinColumns = @JoinColumn(name = "CHILD_ID")
+>>  )
+>>  private List<Child> child = new ArrayList<Child>();
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>public class Child {
+>>  @Id @GeneratedValue
+>>  @Column(name = "CHILD_ID")
+>>  private Long id;
+>>  private String name;
+>>  ...
+>>}
+>>
+>>```
+>- 다대일 조인 테이블
+>>- 다대일, 일대다 양방향 관계 매핑 코드
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @GeneratedValue
+>>  @Column(name = "PARENT_ID")
+>>  private Long id;
+>>  private String name;
+>>
+>>  @OneToMany(mappedBy = "parent")
+>>  private List<Child> child = new ArrayList<Child>();
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>public class Child {
+>>  @Id @GeneratedValue
+>>  @Column(name = "CHILD_ID")
+>>  private Long id;
+>>  private String name;
+>>
+>>  @ManyToOne(optional = false)
+>>  @JoinTable(name = "PARENT_CHILD",
+>>    joinColumns = @JoinColumn(name = "CHILD_ID"),
+>>    inverseJoinColumn = @JoinColumn(name = "PARENT_ID")
+>>  )
+>>  private Parent parent;
+>>  ...
+>>}
+>>```
+>- 다대다 조인 테이블
+>>- 다대다 관계를 만들려면 조인 테이블의 두 컬럼을 합해서 하나의 복합 유니크 제약 조건을 걸어야 함
+>>```java
+>>// 부모
+>>@Entity
+>>public class Parent {
+>>  @Id @GeneratedValue
+>>  @Column(name = "PARENT_ID")
+>>  private Long id;
+>>  private String name;
+>>
+>>  @ManyToMany
+>>  @JoinTable(name = "PARENT_CHILD",
+>>          joinColumns = @JoinColumn(name = "PARENT_ID"),
+>>          inverseJoinColumns = @JoinColumn(name = "CHILD_ID")
+>>  )
+>>  private List<Child> child = new ArrayList<Child>();
+>>  ...
+>>}
+>>
+>>// 자식
+>>@Entity
+>>public class Child {
+>>  @Id @GeneratedValue
+>>  @Column(name = "CHILD_ID")
+>>  private Long id;
+>>  private String name;
+>>  ...
+>>}
+>>```
+>- 조인 테이블에 컬럼을 추가하면 @JoinTable 전략을 사용할 수 없고, 새로운 엔티티를 만들어서 조인 테이블과 매핑해야 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 엔티티 하나에 여러 테이블 매핑
+>- 잘 사용하지는 않지만 @SecondaryTable 을 사용하면 한 엔티티에 여러 테이블을 매핑할 수 있음
+>```java
+>@Entity
+>@Table(name = "BOARD")
+>@SecondaryTable(name = "BOARD_DETAIL",
+>  pkJoinColumns = @PrimaryKeyJoinColumn(name = "BOARD_DETAIL_ID"))
+>public class Board {
+>  @Id @GeneratedValue
+>  @Column(name = "BOARD_ID")
+>  private Long id;
+>
+>  private String title;
+>
+>  @Column(table = "BOARD_DETAIL")
+>  private String content;
+>}
+>```
+>>- Board 엔티티는 @Table 을 사용해서 BOARD 테이블과 매핑했고 @SecondaryTable 을 사용해서 BOARD_DETAIL 테이블을 추가로 매핑함
+>>- @SecondaryTable 속성
+>>>- @SecondaryTable.name : 매핑할 다른 테이블의 이름
+>>>- @SecondaryTable.pkJoinColumns : 매핑할 다른 테이블의 기본 키 컬럼 속성
+>>- content 필드는 @Column(table = "BOARD_DETAIL") 을 사용해서 BOARD_DETAIL 테이블의 컬럼에 매핑함
+>>>- title 필드처럼 테이블을 지정하지 않으면 기본 테이블인 BOARD에 매핑됨
+>- 더 많은 테이블을 매핑하려면 @SecondaryTables 를 사용하면 됨
+>```java
+>@SecondaryTables({
+>  @SecondaryTable(name="BOARD_DETAIL"),
+>  @SecondaryTable(name="BOARD_FILE")
+>})
+>```
+>>- @SecondaryTables 를 사용해서 두 테이블을 하나의 엔티티에 매핑하는 방법보다는 테이블당 엔티티를 각각 만들어서 일대일 매핑하는 것을 권장함
+>>>- 항상 두 테이블을 조회하므로 최적화 하기 어려운 반면에 일대일 매핑은 원하는 부분만 조회할 수 있고 필요하면 둘을 함께 조회하면 됨
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 프록시와 연관관계 정리
+
+>### 프록시
+>- 
