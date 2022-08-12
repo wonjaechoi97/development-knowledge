@@ -66,6 +66,10 @@
 >>- [영속성 전이 + 고아 객체, 생명주기](#영속성-전이--고아-객체-생명주기)
 >- [값 타입](#값-타입)
 >>- [값 타입 개요](#값-타입-개요)
+>>- [임베디드 타입(복합 값 타입)](#임베디드-타입복합-값-타입)
+>>- [값 타입과 불변 객체](#값-타입과-불변-객체)
+>>- [값 타입 컬렉션](#값-타입-컬렉션)
+>>- [값 타입 정리](#값-타입-정리)
 
 <br>
 
@@ -3626,5 +3630,291 @@ public class Member {
 >>- 임베디드 타입은 기본 생성자가 필수임
 >>- 임베디드 타입을 포함한 모든 값 타입은 엔티티의 생명주기에 의존하므로 엔티티와 임베디드 타입의 관계는 컴포지션 관계임
 >- 임베디드 타입과 테이블 매핑
->>- 임데디드 타입은 엔티티의 값일 뿐이므로 값이 속한 엔티티의 테이블에 매핑함
->>- 
+>>- 임베디드 타입은 엔티티의 값일 뿐이므로 값이 속한 엔티티의 테이블에 매핑함
+>>>- 임베디드 타입을 사용하기 전과 후에 매핑하는 테이블은 같음
+>>- 임베디드 타입을 사용하면 객체와 테이블을 아주 세밀하게 매핑하는 것이 가능하고, 잘 설계한 ORM 애플리케이션은 매핑한 테이블의 수보다 클래스의 수가 더 많음
+>- 임베디드 타입과 연관관계
+>>- 임베디드 타입은 값 타입을 포함하거나 엔티티를 참조할 수 있음
+>```java
+>@Entity
+>public class Member {
+>  @Embedded Address address;         // 임베디드 타입 포함
+>  @Embedded PhoneNumber phoneNumber; // 임베디드 타입 포함
+>  //...
+>}
+>
+>@Embeddable
+>public class Address {
+>  String street;
+>  String city;
+>  String state;
+>  @Embedded Zipcode zipcode;   // 임베디드 타입 포함
+>}
+>
+>@Embeddable
+>public class Zipcode {
+>  String zip;
+>  String plusFour;
+>}
+>
+>@Embeddable
+>public class PhoneNumber {
+>  String areaCode;
+>  String localNumber;
+>  @ManyToOne PhoneServiceProvider provider; // 엔티티 참조
+>  ...
+>}
+>
+>@Entity
+>public class PhoneServiceProvider {
+>  @Id String name;
+>  ...
+>}
+>```
+>- @AttributeOverride: 속성 재정의
+>>- 임베디드 타입에 정의한 매핑정보를 재정의하려면 엔티티에 @AttributeOverride를 사용함
+>```java
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  private Long id;
+>  private String name;
+>
+>  @Embedded Address homeAddress;
+>  @Embedded Address companyAddress;
+>}
+>```
+>>- 주소가 하나 더 필요하여 추가한 경우 테이블에 매핑하는 컬럼명이 중복된다는 문제가 있음
+>>>- @AttributeOverrides 를 사용하여 매핑정보를 재정의 해야함
+>```java
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  private Long id;
+>  private String name;
+>
+>  @Embedded Address homeAddress;
+> 
+>  @Embedded
+>  @AttributeOverrides({
+>    @AttributeOverride(name="city", column=@Column(name = "COMPANY_CITY")),
+>    @AttributeOverride(name="street", column=@Column(name = "COMPANY_STREET")),
+>    @AttributeOverride(name="zipcode", column=@Column(name = "COMPANY_ZIPCODE"))
+>  })
+>  Address companyAddress;
+>}
+>```
+>>- @AttributeOverrides 를 사용하면 어노테이션을 너무 많이 사용해서 엔티티 코드가 지저분해 짐
+>>- 다행히 한 엔티티에 같은 임베디드 타입을 중복해서 사용할 일은 많지 않음
+>>- @AttributeOverrides 는 엔티티에 설정해야하며, 임베디드 타입이 임베디드 타입을 가지고 있어도 엔티티에 설정해야 함
+>- 임베디드 타입과 null
+>>- 임베디드 타입이 null 이면 매핑한 컬럼 값은 모두 null 이 됨
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 값 타입과 불변 객체
+>- 값 타입 공유 참조
+>>- 임베디드 타입 같은 값 타입을 여러 엔티티에서 공유하면 위험함
+>>>- 공유 참조로 인해 발생하는 버그는 정말 찾아내기 어려움
+>>>- 뭔가를 수정했는데 전혀 예상치 못한 곳에서 문제가 발생하는 것을 부작용 (side effect) 이라 함
+>>>- 부작용을 막으려면 값을 복사해서 사용해야 함
+>- 값 타입 복사
+>>- 값 타입의 실제 인스턴스인 값을 공유하는 것은 위험하므로 값(인스턴스)을 복사해서 사용해야 함
+>>- 항상 값을 복사해서 사용하면 공유 참조로 인해 발생하는 부작용을 피할 수 있음
+>>- 임베디드 타입처럼 직접 정의한 값 타입은 자바의 기본 타입이 아니라 객체타입이라는 것이 문제임
+>>>- 객체를 대입할 때마다 인스턴스를 복사해서 대입하면 공유 참조를 피할 수 있지만, 복사하지 않고 원본의 참조 값을 직접 넘기는 것을 막을 방법이 없음
+>>- 객체의 공유 참조는 피할 수 없으므로 근본적인 해결책으로 수정자 메서드를 모두 제거하여 객체의 값을 수정하지 못하게 막으면 부작용의 발생을 막을 수 있음
+>- 불변 객체
+>>- 값 타입은 부작용 걱정 없이 사용할 수 있어야 하며, 부작용이 일어나면 값 타입이라 할 수 없음
+>>- 객체를 불변하게 만들면 값을 수정할 수 없으므로 부작용을 원천 차단할 수 있으므로 값 타입은 될 수 있으면 불변 객체로 설계해야 함
+>>- 한 번 만들면 절대 변경할 수 없는 객체를 불변 객체라 하며 불변 객체의 값은 조회할 수 있지만 수정할 수 없음
+>>- 불변 객체를 구현하는 가장 간단한 방법은 생상자로만 값을 설정하고 수정자를 만들지 않으면 됨
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 값 타입 컬렉션
+>- 개요
+>>- 값 타입을 하나 이상 저장하려면 컬렉션에 보관하고 @ElementCollection, @CollectionTable 어노테이션을 사용하면 됨
+>```java
+>@Entity
+>public class Member {
+>  @Id @GeneratedValue
+>  private Long id;
+>
+>  @Embedded
+>  private Address homeAddress;
+>
+>  @ElementCollection
+>  @CollectionTable(name = "FAVORITE_FOODS",
+>    JoinColumns = @JoinColumn(name = "MEMBER_ID"))
+>  @Column(name = "FOOD_NAME")
+>  private Set<String> favoriteFoods = new HashSet<String>();
+>
+>  @ElementCollection
+>  @CollectionTable(name = "ADDRESS", JoinColumns = @JoinColumn(name = "MEMBER_ID"))
+>  @Column(name = "FOOD_NAME")
+>  private List<Address> addressHistory = new ArrayList<Address>();
+>  //...
+>}
+>
+>@Embeddable
+>public class Address {
+>  @Column
+>  private String city;
+>  private String street;
+>  private String zipcode;
+>  //...
+>}
+>```
+>- 값 타입 컬렉션 사용
+>```java
+>Member member = new Member();
+>
+>// 임베디드 값 타입
+>member.setHomeAddress(new Address("통영","몽돌해수욕장","660-123"));
+>
+>// 기본값 타입 컬렉션
+>member.getFavoriteFoods().add("짬뽕");
+>member.getFavoriteFoods().add("짜장");
+>member.getFavoriteFoods().add("탕수육");
+>
+>// 임베디드 값 타입 컬렉션
+>member.getAddressHistory().add(new Address("서울","강남","123-123"));
+>member.getAddressHistory().add(new Address("서울","강북","000-000"));
+>
+>em.persist(member);
+>```
+>>- JPA는 member 엔티티만 영속화해도 member 엔티티의 값 타입도 함께 저장함
+>>- 실제 DB에 실행되는 INSERT SQL
+>>>1. member: INSERT SQL 1번
+>>>2. member.homeAddress: 컬렉션이 아닌 임베디드 값 타입이므로 회원테이블을 저장하는 SQL에 포함됨
+>>>3. member.favoriteFoods: INSERT SQL 3번
+>>>4. member.addressHistory: INSERT SQL 2번
+>>- em.persist(member) 한 번 호출로 총 6번의 INSERT SQL을 실행함 (플러시 할 때 SQL 전달)
+>>- 값 타입 컬렉션은 영속성 전이(Cascade) + 고아 객체 제거(ORPHAN REMOVE) 기능을 필수로 가잠
+>>- 값 타입 컬렉션도 조회할 때 페치 전략을 선택할 수 있는데 LAZY가가 기본임
+>>>- @ElementCollection(fetch = FetchType.LAZY)
+>>- 조회
+>>```java
+>>// SQL: SELECT ID, CITY, STREET, ZIPCODE FROM MEMBER WHERE ID = 1
+>>Member member = em.find(Member.class, 1L); // 1. member
+>>
+>>// 2. member.homeAddress
+>>Address homeAddress = member.getHomeAddress();
+>>
+>>// 3. member.favoriteFoods
+>>Set(String) favoriteFoods = member.getFavoriteFoods(); // LAZY
+>>
+>>// SQL: SELECT MEMBER_ID, FOOD_NAME FROM FAVORITE_FOODS WHERE MEMBER_ID=1
+>>for(String favoriteFood : favoriteFoods) {
+>>  System.out.println("favoriteFood = " + favoriteFood);
+>>}
+>>
+>>// 4. member.addressHistory
+>>List<Address> addressHistory = member.getAddressHistory(); // LAZY
+>>
+>>// SQL: SELECT MEMBER_ID, CITY, STREET, ZIPCODE FROM ADDRESS WHERE MEMBER_ID=1
+>>addressHistory.get(0);
+>>```
+>>- 수정
+>>```java
+>>Member member = em.find(Member.class, 1L);
+>>
+>>// 1. 임베디드 값 타입 수정
+>>member.setHomeAddress(new Address("새로운도시", "신도시1", "123456"));
+>>
+>>// 2. 기본값 타입 컬렉션 수정
+>>Set<String> favoriteFoods = member.getFavoriteFoods();
+>>favoriteFoods.remove("탕수육");
+>>favoriteFoods.add("치킨");
+>>
+>>// 3. 임베디드 값 타입 컬렉션 수정
+>>List<Address> addressHistory = member.getAddressHistory();
+>>addressHistory.remove(new Address("서울","강남","123-123"));
+>>addressHistory.add(new Address("새로운도시","새로운주소","123-456"));
+>>```
+>>>- 기본값 타입 컬렉션 수정
+>>>>- 자바의 String 타입은 수정할 수 없으므로 탕수육을 치킨으로 변경하려면 탕수육을 제거하고 치킨을 추가해야함
+>>>- 임베디드 값 타입 컬렉션 수정
+>>>>- 값 타입은 불변해야 하므로 컬렉션에서 기존 주소를 삭제하고 새로운 주소를 등록함, 값 타입은 equals, hashcode 를 꼭 구현해야 함
+>- 값 타입 컬렉션의 제약사항
+>>- 엔티티는 식별자가 있으므로 엔티티의 값을 변경해도 식별자로 DB에 저장된 원본 데이터를 쉽게 찾아서 변경할 수 있는 반면에 값 타입은 식별자라는 개념이 없고 단순한 값들의 모음이므로 값을 변경해버리면 DB에 저장된 원본 데이터를 찾기는 어려움
+>>- 특정 엔티티 하나에 소속된 값 타입은 값이 변경되어도 자신이 소속된 엔티티를 DB에서 찾고 값을 변경하면 되지만 값 타입 컬렉션에 보관된 값 타입들은 별도의 테이블에 보관되므로 여기에 보관된 값 타입의 값이 변경되면 DB에 있는 원본 데이터를 찾기 어렵다는 문제가 있음
+>>>- JPA 구현체들은 값 타입 컬렉션에 변경 사항이 발생하면, 값 타입 컬렉션이 매핑된 테이블의 연관된 모든 데이터를 삭제하고, 현재 값 타입 컬렉션 객체에 있는 모든 값을 DB에 다시 저장함
+>>>- 예를들어 식별자가 100번인 회원이 관리하는 주소 값 타입 컬렉션을 변경하면 테이블에서 회원 100번과 관련된 모든 주소 데이터를 삭제하고 현재 값 타입 컬렉션에 있는 값을 다시 저장함
+>>- 실무에서는 값 타입 컬렉션이 매핑된 테이블에 데이터가 많다면 값 타입 컬렉션 대신에 일대다 관계를 고려해야 함
+>>- 값 타입 컬렉션을 매핑하는 테이블은 모든 컬럼을 묶어서 기본 키를 구성해야 하므로 DB 기본 키 제약 조건으로 인해 컬럼에 null 을 입력할 수 없고, 같은 값을 중복해서 저장할 수 없는 제약도 있음
+>>- 위에 설명된 문제를 해결하려면 값 타입 컬렉션 대신 새로운 엔티티를 만들어서 일대다 관계로 설정하고 영속성 전이(Cascade) + 고아 객체 제거(ORPHAN REMOVE) 기능을 적용하면 값 타입 컬렉션처럼 사용할 수 있음
+>>```java
+>>@Entity
+>>public class AddressEntity {
+>>  @Id
+>>  @GeneratedValue
+>>  private Long id;
+>>
+>>  @Embedded Address address;
+>>  ...
+>>}
+>>
+>>// 설정 코드
+>>@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+>>@JoinColumn(name = "MEMBER_ID")
+>>private List<AddressEntity> addressHistory = new ArrayList<AddressEntity>();
+>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 값 타입 정리
+>- 엔티티 타입의 특징
+>>- 식별자(@id)가 있음
+>>>- 엔티티 타입은 식별자가 있고 식별자로 구별할 수 있음
+>>- 생명 주기가 있음
+>>>- 생성하고, 영속화하고, 소멸하는 생명 주기가 있음
+>>>- em.persist(entity) 로 영속화함
+>>>- em.remove(entitiy) 로 제거함
+>>- 공유할 수 있음
+>>>- 참조 값을 공유할 수 있는데 이를 공유 참조라 함
+>>>>- 회원 엔티티가 있다면 다른 엔티티에서 얼마든지 회원 엔티티를 참조할 수 있음
+>- 값 타입의 특징
+>>- 식별자가 없음
+>>- 생명 주기를 엔티티에 의존함
+>>>- 스스로 생명주기를 가지지 않고 엔티티에 의존하며, 의존하는 엔티티를 제거하면 같이 제거됨
+>>- 공유하지 않는 것이 안전함
+>>>- 엔티티 타입과는 다르게 공유하지 않는 것이 안전하며, 대신에 값을 복사해서 사용해야 함
+>>>- 오직 하나의 주인만이 관리해야 함
+>>>- 불변 객체로 만드는 것이 안전함
+>>- 식별자가 필요하고 지속해서 값을 추적하고 구분하고 변경해야 한다면 그것은 값 타입이 아닌 엔티티임
+>>>- 값 타입은 정말 값 타입이라 판단될 때만 사용해야 하며 특히 엔티티와 값 타입을 혼동해서 엔티티를 값 타입으로 만들면 안 됨
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 객체지향 쿼리 언어
+
+>### 객체지향 쿼리 언어 개요
+>- 목차
+>>- 객체지향 쿼리 소개
+>>- JPQL
+>>- Criteria
+>>- QueryDSL
+>>- 네이티브 SQL
+>>- 객체지향 쿼리 심화
+>- JPA는 복잡한 검색 조건을 사용해서 엔티티 객체를 조회할 수 있는 다양한 쿼리 기술을 지원함
+>>- JPQL, Criteria, QueryDSL 과 같은 다양한 쿼리 기술을 다루므로 분량이 많음
+>- JPQL 은 가장 중요한 객체지향 쿼리이며 Criteria 나 QueryDSL 은 결국 JPQL 을 편리하게 사용하도록 도와주는 기술이므로 JPA 를 다루는 개발자라면 JPQL 을 필수로 학습해야 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 객체지향 쿼리 소개
+>- 
