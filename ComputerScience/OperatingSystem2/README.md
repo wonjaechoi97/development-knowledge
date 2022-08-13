@@ -551,3 +551,315 @@
 >>>  remainder section
 >>>} while(1);
 >>>```
+
+<br>
+
+[목차로 이동](#목차)
+
+---
+
+## 메모리 관리
+
+>### Logical vs Physical Address
+>- 메모리라는 것은 주소를 통해 접근하는 매체
+>- 메모리에는 주소가 매겨지는데 주소를 크게 두가지로 나누어 볼 수 있음
+>>- 논리적인 주소
+>>- 물리적인 주소
+>- Logical address (= virtual address)
+>>- 프로세스마다 독립적으로 가지는 주소 공간
+>>- 각 프로세스마다 0번지부터 시작
+>>- CPU 가 보는 주소는 logical address 임
+>>>- 컴파일된 코드상의 주소는 유지되기 때문에 CPU가 주소를 요청하면 주소변환을 해서 물리 메모리 위치를 찾아서 CPU에 전달하는 방식으로 동작함
+>>- 실제 물리 메모리 주소를 추상화한 것
+>- Physical address
+>>- 메모리에 실제 올라가는 위치
+>- 주소바인딩 : 주소를 결정하는 것
+>>- Symbolic Address(논리 주소를 변수같은 이름으로 추상화한 것) -> Logical Address(숫자 주소) ->(이 시점이 언제인가? next page) Physical address(실제 메모리의 주소)
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 주소 바인딩 (Address Binding)
+>- 논리주소가 물리주소로 변환이 이루어지는 시점은 3가지로 나뉨
+>- Compile time binding
+>>- 컴파일 시 주소 변환이 이루어지는 것
+>>>- 물리적 메모리 주소가 컴파일 시 알려짐
+>>- 시작 위치 변경시 재컴파일
+>>- 컴파일러는 절대 코드 (absolute code) 생성
+>- Load time binding
+>>- 실행이 시작될 때 주소 변환이 이루어지는 것
+>>>- Loader 의 책임하에 물리적 메모리 주소 부여
+>>- 컴파일러가 재배치가능코드 (relocatable code) 를 생성한 경우 가능
+>- Execution time binding (=Run time binding)
+>>- 수행이 시작된 이후에도 프로세스의 메모리 상 위치를 옮길 수 있음
+>>- CPU가 주소를 참조할 때마다 binding 을 점검 (address mapping table)
+>>- 하드웨어적인 지원이 필요 (base and limit registers, MMU 라는 하드웨어가 주소변환을 해줘야 함)
+>- 예시
+>```
+># 소스코드 (Symbolic address)
+>Add A, B
+>Jump C
+>A: 100
+>B: 330
+>C: exit
+>
+># 소스코드가 컴파일된 실행파일 (Logical address 가 결정됨)
+>0 : Add 20, 30
+>10: Jump 40
+>20: 100
+>30: 330
+>40: exit
+>
+># 실행되어 프로세스 메모리들이 물리적 메모리에 매핑
+># 변환되는 3가지 시점에 따라 달라지는 소스코드
+>
+># Compile time binding
+>0: Add 20, 30
+>10:Jump 40
+>20:100
+>30:330
+># 컴파일 타임에 결정된 항상 같은 논리 주소 위치에 매핑되므로 매우 비효율적임
+># 과거 컴퓨터에서 프로그램이 하나만 실행되는 환경에서는 어차피 다른 프로그램이 올라갈일이 없어 사용되었으나 현재는 사용하지않음
+>
+># Load time binding
+>500:Add 20, 30
+>510:Jump 40
+>520:100
+>530:330
+># 메모리에 올라갈때 물리 메모리 주소가 결정됨
+>
+># Run time binding
+>300:Add 20, 30
+>310:Jump 40
+>320:100
+>330:330
+># 실행 중 변경 가능
+>700:Add 20, 30
+>710:Jump 40
+>720:100
+>730:330
+>```
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Memory-Management Unit (MMU)
+>- MMU
+>>- logical address 를 physical address 로 매핑해주는 Hardware device
+>- MMU scheme
+>>- 사용자 프로세스가 CPU 에서 수행되며 생성해내는 모든 주소값에 대해 base register(=relocation register) 의 값을 더함
+>- user program
+>>- logical address 만을 다룸
+>>- 실제 physical address 를 볼 수 없으며 알 필요가 없음
+>- Dynamic Relocation
+>>1. CPU 가 logical address 346을 요청
+>>2. MMU 의 레지스터 값 relocation register 14000, limit register 3000 값을 이용하여 physical address 로 주소 변환하여 14346 으로 접근
+>>>- limit register 는 악의적인 접근을 막기위한 레지스터
+>- Hardware Support for Address Translation
+>>- 운영체제 및 사용자 프로세스 간의 메모리 보호를 위해 사용하는 레지스터
+>>>- Relocation register (=base register) : 접근할 수 있는 물리적 메모리 주소의 최소값
+>>>- Limit register : 논리적 주소의 범위
+>>- CPU가 메모리까지 접근하는 순서
+>>>1. CPU가 logical address 를 MMU로 보냄
+>>>2. MMU가 limit register 보다 작다면 relocation register를 더해서 물리주소를 알려줌
+>>>>- limit register 보다 크다면 software interrupt 의 일종인 trap: addressing error 발생
+>>>3. CPU는 MMU 로부터 logical address + relocation register 인 물리주소를 전달받아서 접근함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Some Terminologies (일부 용어)
+>- Dynamic Loading
+>>- 프로세스 전체를 메모리에 미리 다 올리는 것이 아니라 해당 루틴이 불려질 때 메모리에 load 하는 것
+>>- memory utilization 의 향상
+>>- 가끔씩 사용되는 많은 양의 코드의 경우 유용함
+>>>- 예) 오류 처리 루틴
+>>- 운영체제의 특별한 지원 없이 프로그램 자체에서 구현 가능 (OS는 라이브러리를 통해 지원 가능)
+>>>- 프로그래머가 명시하지않아도 운영체제가 알아서 올리고 내리고 하는 페이징기법과 원래는 다른것이지만 섞어서 쓰기도 함
+>>- Loading : 메모리로 올리는 것
+>- Overlays
+>>- 메모리에 프로세스의 부분 중 실제 필요한 정보만을 올림
+>>- 프로세스의 크기가 메모리보다 클 때 유용
+>>- 운영체제의 지원없이 사용자에 의해 구현
+>>- 작은 공간의 메모리를 사용하던 초창기 시스템에서 수작업으로 프로그래머가 구현
+>>>- Menual Overlay
+>>>- 프로그래밍이 매우 복잡
+>- Swapping
+>>- Swapping
+>>>-하나의 프로세스를 일시적으로 메모리에서 backing store 로 쫓아내는 것
+>>- Backing store (=swap area)
+>>>- 디스크
+>>>>- 많은 사용자의 프로세스 이미지를 담을 만큼 충분히 빠르고 큰 저장 공간
+>>- Swap in / Swap out
+>>>- 일반적으로 중기 스케줄러 (swapper) 에 의해 swap out 시킬 프로세스 선정
+>>>- priority-based CPU scheduling algorithm
+>>>>- priority 가 낮은 프로세스를 swapped out 시킴
+>>>>- priority 가 높은 프로세스를 메모리에 올려 놓음
+>>>- Compile time 혹은 load time binding 에서는 원래 메모리 위치로 swap in 해야 함
+>>>- Execution time binding 에서는 추후 빈 메모리 영역 아무 곳에나 올릴 수 있음
+>>>- swap time 은 대부분 transfer time (swap 되는 양에 비례하는 시간) 임
+>- Dynamic Linking
+>>- Linking 을 실행 시간 (execution time) 까지 미루는 기법
+>>- static linking
+>>>- 라이브러리가 프로그램의 실행 파일 코드에 포함됨
+>>>- 실행 파일의 크기가 커짐
+>>>- 동일한 라이브러리를 각각의 프로세스가 메모리에 올리므로 메모리 낭비 (printf 함수의 라이브러리 코드)
+>>- Dynamic linking
+>>>- 라이브러리가 실행시 연결(link)됨
+>>>- 라이브러리 호출 부분에 라이브러리 루틴의 위치를 찾기 위한 stub 이라는 작은 코드를 둠
+>>>- 라이브러리가 이미 메모리에 있으면 그 루틴의 주소로 가고 없으면 디스크에서 읽어옴
+>>>- 운영체제의 도움이 필요함
+>>>- 일반적으로 shared library 라 부름
+>>>>- linux 에선 shared object
+>>>>- windows 에선 dll (dynamin linking library)
+
+<br>
+
+[목차로 이동](#목차)
+
+>### 물리 메모리 관리
+>- Allocation of Physical Memory
+>>- 메모리는 일반적으로 두 영역으로 나뉘어 사용
+>>>- OS 상주 영역
+>>>>- interrupt vector 와 함께 낮은 주소 영역 사용
+>>>- 사용자 프로세스 영역 
+>>>>- 높은 주소 영역
+>>- 사용자 프로세스 영역의 할당 방법
+>>>- Contijuous allocation (연속 할당)
+>>>>- 각각의 프로세스가 메모리의 연속적인 공간에 적재되도록 하는 것
+>>>>>- Fixed partition allocation (고정분할 방식)
+>>>>>- Variable partition allocation (가변분할 방식)
+>>>- Noncontiguous allocation (불연속 할당)
+>>>>- 하나의 프로세스가 메모리의 여러 영역에 분산되어 올라갈 수 있음
+>>>>>- Paging
+>>>>>- Segmentation
+>>>>>- Paged Segmentation
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Contiguous Allocation (연속 할당)
+>- Fixed partition allocation (고정분할 방식)
+>>- 물리적 메모리를 몇 개의 영구적 분할(partition)로 나눔
+>>- 분할의 크기가 모두 동일한 방식과 서로 다른 방식이 존재함
+>>- 분할당 하나의 프로그램 적재
+>>>- 프로그램의 크기가 분할 크기를 초과하면 외부조각이라는 낭비공간이 발생
+>>>- 프로그램의 크기가 분할 크기보다 작으면 내부조각이라는 낭비공간이 발생
+>>- 융통성이 없음
+>>>- 동시에 메모리에 load 되는 프로그램의 수가 고정됨
+>>>- 최대 수행 가능 프로그램 크기 제한
+>>- Internal fragmentation(내부 단편화) 발생 (external fragmentation(외부 단편화) 도 발생)
+>- Variable partition allocation (가변분할 방식)
+>>- 프로그램의 크기를 고려해서 할당
+>>- 분할의 크기, 개수가 동적으로 변함
+>>- 기술적 관리 기법 필요
+>>- External fragmentation 발생
+>- Hole
+>>- 가용 메모리 공간
+>>- 다양한 크기의 hole들이 메모리 여러 곳에 흩어져 있음
+>>- 프로세스가 도착하면 수용가능한 hole을 할당
+>>- 운영체제는 다음의 정보를 유지
+>>>- 할당 공간
+>>>- 가용 공간 (hole)
+>- Dynamic Storage-Allocation Problem
+>>- 가변 분할 방식에서 size n인 요청을 만족하는 가장 적절한 hole을 찾는 문제
+>>- First fit
+>>>- Size 가 n 이상인 것 중 최초로 찾아지는 hole 에 할당
+>>- Bast fit
+>>>- Size 가 n 이상인 가장 작은 hole 을 찾아서 할당
+>>>- Hole 들의 리스트가 크기순으로 정렬되지 않은 경우 모든 hole 의 리스트를 탐색해야함
+>>>- 많은 수의 아주 작은 hole 들이 생성됨
+>>- Worst fit
+>>>- 가장 큰 hole 에 할당
+>>>- 모든 리스트를 탐색해야함
+>>>- 상대적으로 아주 큰 hole 들이 생성됨
+>>- First fit 과 Best fit 이 Worst fit 보다 속도와 공간 이용률 측면에서 효과적인 것으로 알려짐 (실험적 결과)
+>- compaction
+>>- external fragmentation 문제를 해결하는 한 가지 방법
+>>- 사용 중인 메모리 영역을 한군데로 몰고 hole들을 다른 한 곳으로 몰아 큰 block을 만드는 것 (디스크 조각 모음 같은)
+>>- 매우 비용이 많이 드는 방법임 (전체 프로그램의 바인딩과 관련된 문제이기 때문에)
+>>- 최소한의 메모리 이동으로 compaction 하는 방법이 효율적임 (매우 복잡한 문제)
+>>- compaction 은 프로세스의 주소가 실행 시간에 동적으로 재배치 가능한 경우에만 수행될 수 있음 (런타임 바인딩이 지원되는 경우에만)
+
+<br>
+
+[목차로 이동](#목차)
+
+>### Noncontiguous allocation (불연속 할당)
+>- Paging
+>>- Paging
+>>>- Process 의 virtual memory 를 동일한 사이즈의 page 단위로 나눔
+>>>- Virtual memory 의 내용이 page 단위로 noncontiguous 하게 저장됨
+>>>- 일부는 backing storage 에, 일부는 physical memory 에 저장
+>>- Masic Method
+>>>- physical memory 를 동일한 크기의 frame 으로 나눔
+>>>- logical memory 를 동일 크기의 page 로 나눔 (frame 과 같은 크기)
+>>>- 모든 가용 frame 들을 관리
+>>>- page table 을 사용하여 logical address 를 physical address 로 변환
+>>>- External fragmentation 발생 안함
+>>>- Internal fragmentation 발생 가능
+>- Implementation of Page Table (페이지 테이블 구현)
+>>- Page table 은 main memory 에 상주
+>>- Page table base register (PTBR) 가 page table 을 가리킴
+>>- Page table length register (PTLR) 가 테이블 크기를 보관
+>>- 모든 메모리 접근 연산에는 2번의 memory access 필요
+>>- page table 접근 1번, 실제 data/instruction 접근 1번
+>>- 속도 향상을 위해 별도의 하드웨어로써 CPU와 메인메모리 계층 사이에 있는 associative register 혹은 translation look-aside buffer (TLB) 라 불리는 고속의 lookup hardware cache 사용
+>>>- TLB 를 통해 접근해보고 캐시미스가 났을때 page table로 접근하여 물리 주소를 알아냄
+>- Associative Register
+>>- Associative Register (TLB) : parallele search 가 가능
+>>>- TLB 에는 page table 중 일부만 존재
+>>- Address translation
+>>- page table 중 일부가 associative register 에 보관되어 있음
+>>- 만약 해당 page # 가 associative register 에 있는 경우 곧바로 frame # 을 얻음
+>>- 없는 경우 main memory 에 있는 page table 로 부터 frame # 을 얻음
+>>- TLB 는 context switch 때 flush (remove old entries)
+>>>- 프로세스마다 TLB 와 page table 이 다르기 때문임
+>- Two Level Page Table
+>>- 현대의 컴퓨터는 address space 가 매우 큰 프로그램 지원
+>>>- 32 bit address 사용시 2^32 (4G) 의 주소 공간
+>>>>- page size 가 4K 일 경우 1M 개의 page table entry 필요
+>>>>- 각 page entry 가 4B 일 경우 프로세스당 4M 의 page table 필요
+>>>>- 그러나, 대부분의 프로그램은 4G 의 주소 공간 중 지극히 일부분만 사용하므로 page table 공간이 심하게 낭비됨
+>>- page table 자체를 page 로 구성
+>>- 사용되지 않는 주소 공간에 대한 outer page table 의 엔트리 값은 NULL (대응하는 inner page table 이 없음을 의미)
+>- Two Level Page Table Example
+>>- logical address (on 32 bit machine with 4K page size) 의 구성
+>>>- 20 bit 의 page number
+>>>- 12 bit 의 page offset
+>>- page table 자체가 page 로 구성되기 때문에 page number 는 다음과 같이 나뉨 (각 page table entry 가 4B)
+>>>- 10 bit 의 page number
+>>>- 10 bit 의 page offset
+>>```
+>># logical address
+>>-----------------------------
+>>| page number | page offset |
+>>|  p1  |  p2  |      d      |
+>>|  10  |  10  |      12     |
+>>-----------------------------
+>>```
+>>- p1 은 outer page table 의 index
+>>- p2 는 outer page table 의 page 에서의 변위 (displacement)
+>>- 비트수 결정
+>>>- 4k page size 는 10^12 크기이므로 page offset 은 12bit 필요
+>>>- inner page table 이 4K 크기인데 각 entry 가 4B 이기때문에 entry 수가 1K 이므로 p2 는 10비트가 필요
+>>>- 남은 비트를 p1 에 할당
+>>- 64 bit machine with 4K page size 인 경우
+>>>- page size 가 4K 로 고정이므로 page offset 은 12bit
+>>>- 4K 안에 8B 짜리 엔트리를 2^9 개 담을 수 있으므로 p2 는 9bit
+>>>- p1은 남은 43bit가 할당됨
+>>- 페이지 테이블이 엔트리가 100만개 이상이 필요하고 2단계 페이징을 쓰더라도 여전히 100만개 이상이 필요하며 바깥쪽 테이블이 생기기 때문에 오히려 시간도 손해 공간도 손해인거 같은데 왜 쓰는가
+>>>- 실제 공간중 상당 부분은 사용되지 않음
+>>>>- 페이지 테이블을 만들때는 사용되지 않는 공간들도 엔트리를 안만들 수 없음
+>>>>- 2단계 페이징을 쓰면 바깥쪽 테이블은 전체 논리 메모리 크기만큼 만들어지지만 사용되지 않는 주소에 대해 안쪽 테이블은 만들어지지 않고 바깥쪽 테이블에선 NULL 이므로 메모리 공간에 매우 효과적임
+>- 예상 질문
+>>- 내부 단편화와 외부 단편화란?
+>>>- 내부 단편화는 프로세스가 필요한 양보다 더 큰 메모리 공간에 할당되어 메모리 낭비가 발생하는 것임
+>>>- 외부 단편화는 메모리에 프로세스가 할당될 만큼 충분한 공간이 존재하지만 공간이 쪼개어져서 프로세스를 넣을 수 없는 것을 의미함
+>>- 페이징의 장점과 단점은?
+>>>- 장점 : 페이징 기법을 사용하게 되면 하나의 프로세스가 사용하는 메모리 공간이 연속적이어야 한다는 제약을 없애 외부 단편화 문제점을 해결할 수 있음
+>>>- 단점 : Mapping 과정 또한 늘어나기 때문에 시간적인 손해가 발생할 수 있고 페이지 단위에 알맞게 꽉채워 쓰는게 아니므로 내부 단편화 문제는 해결되지 않음
