@@ -34,6 +34,16 @@
 >>- [알고리즘 평가방법](#알고리즘-평가방법)
 >- [프로세스 동기화](#프로세스-동기화)
 >>- [프로세스 동기화 개요](#프로세스-동기화-개요)
+>>- [race condition](#race-condition)
+>>- [임계구역 문제 (The Critical-Section Problem)](#임계구역-문제-the-critical-section-problem)
+>- [메모리 관리](#메모리-관리)
+>>- [Logical vs Physical Address](#logical-vs-physical-address)
+>>- [주소 바인딩 (Address Binding)](#주소-바인딩-address-binding)
+>>- [Memory-Management Unit (MMU)](#memory-management-unit-mmu)
+>>- [Some Terminologies (일부 용어)](#some-terminologies-일부-용어)
+>>- [물리 메모리 관리](#물리-메모리-관리)
+>>- [Contiguous Allocation (연속 할당)](#contiguous-allocation-연속-할당)
+>>- [Noncontiguous allocation (불연속 할당)](#noncontiguous-allocation-불연속-할당)
 
 
 <br>
@@ -689,7 +699,7 @@
 >>>- 프로그래밍이 매우 복잡
 >- Swapping
 >>- Swapping
->>>-하나의 프로세스를 일시적으로 메모리에서 backing store 로 쫓아내는 것
+>>>- 하나의 프로세스를 일시적으로 메모리에서 backing store 로 쫓아내는 것
 >>- Backing store (=swap area)
 >>>- 디스크
 >>>>- 많은 사용자의 프로세스 이미지를 담을 만큼 충분히 빠르고 큰 저장 공간
@@ -728,7 +738,7 @@
 >>>- 사용자 프로세스 영역 
 >>>>- 높은 주소 영역
 >>- 사용자 프로세스 영역의 할당 방법
->>>- Contijuous allocation (연속 할당)
+>>>- Continuous allocation (연속 할당)
 >>>>- 각각의 프로세스가 메모리의 연속적인 공간에 적재되도록 하는 것
 >>>>>- Fixed partition allocation (고정분할 방식)
 >>>>>- Variable partition allocation (가변분할 방식)
@@ -769,7 +779,7 @@
 >>- 가변 분할 방식에서 size n인 요청을 만족하는 가장 적절한 hole을 찾는 문제
 >>- First fit
 >>>- Size 가 n 이상인 것 중 최초로 찾아지는 hole 에 할당
->>- Bast fit
+>>- Best fit
 >>>- Size 가 n 이상인 가장 작은 hole 을 찾아서 할당
 >>>- Hole 들의 리스트가 크기순으로 정렬되지 않은 경우 모든 hole 의 리스트를 탐색해야함
 >>>- 많은 수의 아주 작은 hole 들이 생성됨
@@ -795,7 +805,7 @@
 >>>- Process 의 virtual memory 를 동일한 사이즈의 page 단위로 나눔
 >>>- Virtual memory 의 내용이 page 단위로 noncontiguous 하게 저장됨
 >>>- 일부는 backing storage 에, 일부는 physical memory 에 저장
->>- Masic Method
+>>- Basic Method
 >>>- physical memory 를 동일한 크기의 frame 으로 나눔
 >>>- logical memory 를 동일 크기의 page 로 나눔 (frame 과 같은 크기)
 >>>- 모든 가용 frame 들을 관리
@@ -863,3 +873,7 @@
 >>- 페이징의 장점과 단점은?
 >>>- 장점 : 페이징 기법을 사용하게 되면 하나의 프로세스가 사용하는 메모리 공간이 연속적이어야 한다는 제약을 없애 외부 단편화 문제점을 해결할 수 있음
 >>>- 단점 : Mapping 과정 또한 늘어나기 때문에 시간적인 손해가 발생할 수 있고 페이지 단위에 알맞게 꽉채워 쓰는게 아니므로 내부 단편화 문제는 해결되지 않음
+
+<br>
+
+[목차로 이동](#목차)
