@@ -12,6 +12,12 @@
 >>- [퍼블릭 블록체인 실습 환경설정](#퍼블릭-블록체인-실습-환경설정)
 >>- [퍼블릭 네트워크 활용 및 실습](#퍼블릭-네트워크-활용-및-실습)
 >>- [블록체인 네트워크 실습2](#블록체인-네트워크-실습2)
+>- [스마트 컨트랙트 (SmartContract)](#스마트-컨트랙트-smartcontract)
+>>- [SmartContract 란?](#smartcontract-란)
+>>- [SmartContract 환경설정](#smartcontract-환경설정)
+>>- [SmartContract 배포](#smartcontract-배포)
+>>- [SmartContract 호출](#smartcontract-호출)
+>>- [SmartContract 실습](#smartcontract-실습)
 
 <br>
 
@@ -613,7 +619,31 @@
 ## 스마트 컨트랙트 (SmartContract)
 
 >### SmartContract 란?
->- 
+>- 개요
+>>- Nick Szabo 에 의해 최초로 정의
+>>- 스마트 하지 않은 단순 컴퓨터 프로그램, 법적 맥락 없음, 다소 잘못된 용어임에 불구하고 자리잡음
+>>- 불록체인에서의 정의 : 불변의 컴퓨터 프로그램 (마스터링 이더리움 서적 참고)
+>>>- 컴퓨터 프로그램
+>>>- 불변 (immutable) 한번 배포되면 변경 불가
+>>>- 결정적 (deterministic) 실행한 결과가 모두 같음
+>>>- EVM 위에서 동작
+>>>- 탈중앙화된 World Computer 동일한 상태를 유지
+>- 배포와 호출 과정
+>>- 배포
+>>>1. 스마트 컨트랙트 코드 작성
+>>>2. 1 을 컴파일하여 (ABI 생성) 바이드 코드
+>>>3. 2 에서 트랜잭션을 생성하여 컨트랙트 배포 트랜잭션
+>>>4. 3 을 트랜잭션 처리 (CA생성) 하여 블록에 담김
+>>>5. 네트워크에 블록을 전파하여 블록 동기화
+>>- 호출
+>>>1. 트랜잭션 생성
+>>>>- 사용자 계정 (EOA, Externall Owned Accounts)
+>>>>- 컨트랙트 계정 (CA, Contract Accounts)
+>>>>- ABI (Application Binary Interface)
+>>>>- 함수의 주소, 매개변수
+>>>2. 1의 컨트랙트 호출 트랜잭션 생성
+>>>3. 2를 트랜잭션 처리하여 블록에 담김
+>>>4. 3을 네트워크에 블록 전파하고 트랜잭션을 실행하여 블록 동기화
 
 <br>
 
@@ -621,28 +651,72 @@
 
 
 >### SmartContract 환경설정
->- 
+>-  Remix IDE
+>>- remix.ethereum.org (on chrome browser)
+>>- 스마트 컨트랙트 IDE
+>>>- 별도의 개발 환경 설정 없이 스마트 컨트랙트를 작성하고 배포, 호출
 
 <br>
 
 [목차로이동](#목차)
 
 >### SmartContract 배포
->- 
+>- 배포할 컨트랙트 준비
+>>- Remix IDE 에서 기본 컨트렉트 1_Storage.sol 사용
+>- 컴파일
+>>- SOLIDITY COMPILER 탭에서 컴파일
+>- 배포
+>>- DEPLOY & RUN TRANSACTIONS 탭에서 배포
 
 <br>
 
 [목차로이동](#목차)
 
 >### SmartContract 호출
->- 
+>-  DEPLOY & RUN TRANSACTIONS 탭의 Deployed Contracts 항목에서 컨트렉트 호출 가능
 
 <br>
 
 [목차로이동](#목차)
 
 >### SmartContract 실습
->- 
+>- 문제1 : 리믹스에서 3_Ballot.sol 예제 코드 배포 & 호출해보기
+>>1. 코드를 열고 컴파일
+>>2. 배포탭에서 해당 내용을 인자로 입력하고 배포하기
+>>>- ["0x7472756d70000000000000000000000000000000000000000000000000000000", "0x626964656e000000000000000000000000000000000000000000000000000000"]
+>>- 배포결과
+>><img width="738" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186648531-f42b6a32-7f5f-4476-8c78-1b1c29d351d4.PNG">
+>>- 컨트랙트 호출
+>><img width="741" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186652364-a64bdfdb-f915-4c99-99ad-044f2d8e07d9.PNG">
+>- 문제2 : 리믹스에서 Ganache 테스트넷에 컨트랙트 배포 & 호출해보기
+>>- 설명
+>>>- Ganache-cli 를 구동한 후 Ganache 테스트넷에 문제1에서 수행한 것과 같이 3_Ballot.sol 을 배포 & 호출하기
+>>>- 배포 및 호출은 Remix IDE 를 통하여 수행하기
+>- 해결
+>>1. Ganache 구동
+>>>- $ ganache-cli -d -m -a 5 -p 7545
+>>2. DEPLOY & RUN TRANSACTIONS 에서 ENVIRONMENT 를 Ganache Provider 로 변경 후 엔트포인트 http://127.0.0.1:7545 로 지정
+>>3. 변경된 network 정보와 Account 목록을 확인
+>>4. 컨트랙트 배포
+>>5. 가나슈에서 배포 결과 확인
+>><img width="503" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186653514-a2505508-0ca6-4f1b-9d1c-394103fea984.PNG">
+>- 문제3 : geth console 을 이용하여 Ganache 테스트넷에 컨트랙트 배포하기
+>>- 설명
+>>>- Ganache-cli 를 구동한 후 geth console 을 통해 Ganache 테스트넷에 3_Ballot.sol 을 배포 & 호출하기
+>>>- 배포 및 호출도 geth console 을 이용하되, 컴파일된 ABI, Bytecode 를 이용하기 위해 Remix IDE 의 컴파일러 사용
+>>><img width="478" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186657477-55fce025-4e69-4709-99c7-9a72a09197c2.PNG">
+>- 문제4 : 리믹스와 MataMask 계정을 통해 Ganache 네트워크로 컨트랙트 배포해보기
+>>- 설명
+>>>- Ganache-cli 를 구동한 후 계정을 MetaMask 에 import 한 후 Remix를 통해 Ganache 테스트넷으로 3_Ballot.sol 을 배포하기
+>- 해결
+>>1. 가나슈 구동 후 MetaMask 로 가져오기 할 주소의 private key 복사
+>>2. MetaMask 에서 가나슈로 연결하고 private key 로 지갑을 추가
+>>3. Remix 와 MetaMask 연결하기
+>>>- Remix 의 ENVIRONMENT 를 Injection Provider - Metamask 로 변경하면 MataMask가 자동으로 켜지면서 연동되며, Metamask 에서 연결됨 상태인지 확인
+>>4. Remix 에서 컨트랙트 배포시도시 Metamask 의 승인창을 통해 배포됨
+>>- 컨트랙트 배포 결과
+>><img width="480" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186662646-fef010d2-b44a-4f03-b671-f62563d0a5e3.PNG">
+>><img width="735" alt="캡처" src="https://user-images.githubusercontent.com/65841586/186662773-04c847d9-06de-425c-9cdb-0e7ca9ddeb31.PNG">
 
 <br>
 
@@ -650,3 +724,7 @@
 
 ---
 
+## 
+
+>###
+>- 
