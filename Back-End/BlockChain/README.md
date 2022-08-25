@@ -1,21 +1,25 @@
 # **블록체인** 🔗
 
 ## 목차
->- [블록체인 네트워크의 이해](#블록체인-네트워크의-이해)
->>- [이더리움 블록체인 네트워크의 분류](#이더리움-블록체인-네트워크의-분류)
+>- [프라이빗 네트워크 실습으로 이더리움 네트워크 시작하기](#프라이빗-네트워크-실습으로-이더리움-네트워크-시작하기)
+>>- [이더리움 블록체인 네트워크의 분류1](#이더리움-블록체인-네트워크의-분류1)
 >>- [이더리움 네트워크 개념도](#이더리움-네트워크-개념도)
->>- [환경설정](#환경설정)
+>>- [프라이빗 네트워크 실습 환경설정](#프라이빗-네트워크-실습-환경설정)
 >>- [로컬 네트워크 활용 및 실습](#로컬-네트워크-활용-및-실습)
->>- [블록체인 네트워크 실습](#블록체인-네트워크-실습)
+>>- [블록체인 네트워크 실습1](#블록체인-네트워크-실습1)
+>- [퍼블릭 블록체인 실습](#퍼블릭-블록체인-실습)
+>>- [이더리움 블록체인 네트워크의 분류2](#이더리움-블록체인-네트워크의-분류2)
+>>- [퍼블릭 블록체인 실습 환경설정](#퍼블릭-블록체인-실습-환경설정)
+>>- [퍼블릭 네트워크 활용 및 실습](#퍼블릭-네트워크-활용-및-실습)
+>>- [블록체인 네트워크 실습2](#블록체인-네트워크-실습2)
 
 <br>
 
 ---
 
-## 블록체인 네트워크의 이해
->- 프라이빗 네트워크 실습으로 이더리움 네트워크 시작하기
+## 프라이빗 네트워크 실습으로 이더리움 네트워크 시작하기
 
->### 이더리움 블록체인 네트워크의 분류
+>### 이더리움 블록체인 네트워크의 분류1
 >- 이더리움 블록체인 네트워크의 분류
 >>- 퍼블릭 네트워크
 >>- 프라이빗 네트워크
@@ -59,7 +63,7 @@
 
 [목차로이동](#목차)
 
->### 환경설정
+>### 프라이빗 네트워크 실습 환경설정
 >- Prerequisites
 >>- Chocolatey 설치
 >>>- PowerShell 관리자 권한으로 실행
@@ -187,7 +191,7 @@
 
 [목차로이동](#목차)
 
->### 블록체인 네트워크 실습
+>### 블록체인 네트워크 실습1
 >- 문제1 : geth console 에서 데이터를 담은 트랜잭션 생성
 >>- 사전 준비 : 트랜잭션을 보낼 주소와 받을 주소를 선택하고 잔고를 확인함
 >>1. sendTransaction 을 사용하여 트랜잭션을 보냄
@@ -277,4 +281,372 @@
 <br>
 
 [목차로이동](#목차)
+
+---
+
+## 퍼블릭 블록체인 실습
+
+### 이더리움 블록체인 네트워크의 분류2
+>- 개요
+>>- 프라이빗 네트워크는 진정한 의미의 블록체인으로 보기 어려움
+>>- 블록체인은 수많은 사람들이 자료를 공유하고 자료에 대한 합의를 하는것이 기본적인 개념임
+>- 퍼블릭 네트워크의 분류
+>>- 메인넷이 기본임
+>>- 메인넷에 들어가기전 마음껏 테스트하기 위한 환경인 테스트넷을 이더리움 재단에서 운영중임
+>- 메인넷을 구성하는 다양한 이더리움 클라이언트 종류
+>>- 다양한 종류가 있으나 geth가 80% 이상을 차지함
+>>- geth는 이더리움 재단에서 공식적으로 제공하고 있고 많은 이더리움 클라이언트들이 geth로 구동되고 있기 때문임
+
+<br>
+
+[목차로이동](#목차)
+
+### 퍼블릭 블록체인 실습 환경설정
+>- Ropsten 네트워크 동기화 상태 확인
+>>- Geth 접속
+>>>- geth attach http://localhost:8545
+>>>- 동기화 완료까지 평균 8시간 소요
+>>- 상태 확인 명령
+>>```
+>># geth console 내부
+>>> net.listening
+>>> eth.syncing
+>>> net.peerCount
+>>```
+>>>- 동기화 완료시 eth.syncing 명령에서 false 가 리턴됨
+>>- 동기화 완료 확인
+>>>- 이더 잔고 확인
+>>>>- eth.getBalance(eth.accounts[0])
+
+<br>
+
+[목차로이동](#목차)
+
+### 퍼블릭 네트워크 활용 및 실습
+>- 지갑을 통해 네트워크 활용하기
+>>1. 메타마스크와 노드 연결
+>>>- 메타마스크 열고 Ropsten 네트워크에 연결
+>>2. 계정 등록하기
+>>>- 키스토어 가져오기 (import)
+>>>>- Ropsten Faucet 으로부터 이더를 수령한 계정
+>>3. 메타마스크로 트랜잭션 생성하기
+>>>1. 메타마스크에서 계정 추가
+>>>```
+>>>personal.newAccount(PASSWORD)
+>>>```
+>>>>- geth console 에서 새로운 계정 생성
+>>>2. 메타마스크에서 새로만든 계정으로 0.1Ether 전송
+>>>3. 받은 계정의 잔액 확인하기
+>>>>- 메타마스크에서 계정 가져오기로 확인
+>>>>- geth console 에서 새로운 계정을 생성한 경우, 잔액 확인 방법
+>>>>```
+>>>>>eth.getBalance(eth.accounts[1])
+>>>>>web3.fromWei(eth.getBalance(eth.accounts[1]), "ether")
+>>>>```
+>>- 메타마스크를 통한 네트워크 참여는 직접 노드를 통해 참여하는것이 아닌 어딘가에 있는 노드를 통해서 참여하고 있는 것임
+>- 노드 서비스로 네트워크 활용하기
+>>- 직접 엔드포인트를 점유해서 누군가가 제공해주는 노드에 직접 접속해서 퍼블릭 이더리움 네트워크에 참여할 수 있음
+>>1. 노드 서비스 가입하기
+>>>- Infura 회원 가입 및 프로젝트 생성
+>>>>- https://infura.io/
+>>>- 프로젝트 페이지 > SETTINGS
+>>>- ENDPOINT를 Ropsten 으로 변경
+>>>>- Infura Project 에서 생성된 ENDPOINT 는 고정된 값으로 이후 과정에서 이를 이용하기 위해 URL을 기록하는 것을 권장함
+>>> 노드 이용을 위한 JSON RPC APIs
+>>>- JSON RPC API 참고 링크
+>>>>- https://eth.wiki/json-rpc/API
+>>>>- https://infura.io/docs/ethereum#section/Make-Requests/JSON-RPC-Methods
+>>2. 노드 서비스 이용하기
+>>>- 노드 클라이언트 조회
+>>>>- Powershell(Invoke-WebRequest) 혹은 cmd(curl) 에서 수행
+>>>>```
+>>>># cmd
+>>>>> curl -X POST \
+>>>>-H "Content-Type: application/json" \
+>>>>-d '{"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []}' \
+>>>>"https://ropsten.infura.io/v3/PROJECT_ID"
+>>>>
+>>>># powershell
+>>>>> $body='{
+>>>>>> "jsonrpc": "2.0",
+>>>>>> "method": "web3_clientVersion",
+>>>>>> "params": [],
+>>>>>> "id": 100
+>>>>>> }'
+>>>>> $R=Invoke-WebRequest https://ropsten.infura.io/v3/PROJECT_ID -method post -body $body -contenttype "application/json"
+>>>>> $R
+>>>>```
+>- 노드로 직접 참여하기
+>>1. 네트워크 동기화 완료 확인
+>>>- 이더 잔고 확인
+>>>>- eth.getBalance(eth.accounts[0])
+>>2. geth console 이용하기
+>>```
+>># 연결성 확인 (Connectivity Check)
+>>> net.listening
+>>> net.peerCount
+>>
+>># 계정 생성
+>>personal.newAccount("pasword")
+>>
+>># 트랜잭션 생성
+>>## 트랜잭션 생성을 위한 계정 보안 해제 (Unlock)
+>>> personal.unlockAccount(eth.accounts[0])
+>>
+>>## 트랜잭션 오브젝트 구조
+>>> tx = { from: eth.accounts[0], to: eth.accounts[1], value: 1e17, gas: 90e3, gasPrice: 20e9, nonce: 0 }
+>>
+>>## 트랜잭션 보내기
+>>> eth.sendTransaction(tx)
+>>```
+
+<br>
+
+[목차로이동](#목차)
+
+### 블록체인 네트워크 실습2
+>- 문제1 : geth 를 통해 데이터를 담은 트랜잭션 생성하기
+>>- 설명 : 과제는 eth console 내에서 진행함
+>>>1. "hello ethereum" 메시지를 담은 트랜잭션을 보내기
+>>>2. 트랜잭션 전송은 sendTransaction API 를 사용할것
+>>>3. API 호출 후 트랜잭션 처리 결과를 확인하기
+>>>4. getTransaction 과 getTransactionReceipt 를 사용해보고 비교하기
+>>>5. 트랜잭션 결과를 Etherscan 에서 조회하기
+>- 문제 해결
+>```
+># 보낼 주소와 받을 주소
+>> from = eth.accounts[0]
+>> to = eth.accounts[1]
+>
+># 메시지 필드 생성
+>> data = web3.toHex("hello ethereum")
+>
+># 트랜잭션 메시지 필드
+>> tx = { from: from, to: to, data: data }
+>
+># 주소 잠금 해제
+>> personal.unlockAccount(from)
+>
+># 트랜잭션 전송
+>> tx_hash = eth.sendTransaction(tx)
+>
+># 트랜잭션 조회
+>> eth.getTransaction(tx_hash)
+>> eth.getTransactionReceipt(tx_hash)
+>## 전자 서명 시점(전송 시)에 변경되지 않는 정보가 생성된 것이 Transaction
+>## TransactionReceipt 에는 Transaction 수행 결과가 기록되므로 cumulativeGasUsed, gasUsed, logs, status 등 Transaction 에는 없는 필드들을 확인할 수 있음
+>```
+>- 문제2 : geth의 또 다른 API 를 사용하여 트랜잭션 보내기
+>>- 설명 : 과제는 eth console 내에서 진행함
+>>>1. sendRawTransaction API 를 사용하기
+>>>2. 보낼 주소와 받을 주소를 준비하여 0.1Ether 를 전송하고 API 호출 후 트랜잭션 처리 결과를 확인하기
+>>>3. 받은 계정의 잔고를 확인하기
+>>>4. 트랜잭션 결과를 Etherscan 에서 조회하기
+>>>5. sendTransaction 과 sendRawTransaction 의 차이는 무엇인지 정리하기
+>- 문제 해결
+>>- sendRawTransaction 을 통해 트랜잭션 전송하는 순서
+>>>1. 트랜잭션 생성
+>>>2. 보내는 주소 잠금 해제
+>>>3. 트랜잭션 서명 (Digital Signature)
+>>>4. 트랜잭션 전송
+>>>>- Hexadecimal character 로 출력된 raw transaction 을 sendRawTransaction 을 통해 전송
+>>```
+>># 트랜잭션 메시지 생성
+>>## 보낼 주소와 받을 주소
+>>> from = eth.accounts[0]
+>>> to = eth.accounts[1]
+>>
+>>## raw transaction 을 생성하기 위해서는 nonce, gas, gasPrice 가 필수적으로 지정되어야 함
+>>
+>>## nonce : 특정 주소로부터 생성된 트랜잭션의 수를 나타내며 순차적으로 증가함
+>>> nonce = eth.getTransactionCount(from)
+>>
+>>## gas, gasPrice : 이더 전송에 소요되는 가스는 21000 이므로 gas (gas limit) 을 알맞게 지정해야 함
+>>## geth 의 gas 기본값은 90000(90e3), gasPrice 기본값은 20Gwei(20e9) 임
+>>
+>>> tx = { from: from, to: to, value: 1e17, gasPrice:20e9, gas:90e3, nonce:1 }
+>>
+>># 주소 잠금 해제
+>>> personal.unlockAccount(from)
+>>
+>># 트랜잭션 서명
+>>## sendTransaction 은 전자 서명까지 내부적으로 수행하지만, sendRawTransaction 은 이미 서명된 트랜잭션인 raw transaction 을 단순 전송하는 역할만 하므로 생성된 트랜잭션 메시지를 직접 전자 서명 해야함
+>>> signed_tx = eth.signTransaction(tx)
+>>
+>># 트랜잭션 전송
+>>tx_hash = eth.sendRawTransaction(signed_tx.raw)
+>>
+>># 트랜잭션 결과 확인
+>>> eth.getTransaction
+>>> eth.getTransactionReceipt
+>>
+>>## 주소 잔액 조회를 통한 결과 확인
+>>> web3.fromWei(eth.getBalance(from), "ether")
+>- 문제3 : 노드 서비스에 조회 요청 보내기
+>>- 설명
+>>>- Invoke-WebRequest(Powershell) 혹은 curl(명령프롬프트) 명령어를 사용하여 진행함
+>>>- 노드 서비스로 다음 요청들을 보내기
+>>>>1. 네트워크 ID 확인
+>>>>2. 노드 상태 조회 : 동기화 상태, 최근 블록 번호, 피어 수, listening 상태
+>>>>3. 블록 조회 : 조회할 블록 번호 : 9361332
+>>>>4. 트랜잭션 조회
+>>>>>- 조회할 트랜잭션 해시 : 0xa1aff823cdff25ea042feb606ebe46ca53de135c0903e7a9e758a5d33682b221
+>>>>>- 해당 트랜잭션에 적힌 메시지가 무엇인지 확인하기
+>- 문제 해결
+>>- Infura 프로젝트에서 생성한 가용 엔트포인트를 먼저 준비하기
+>>- Ropsten 네트워크 이용을 위한 엔트포인트여야 함
+>>- Ethereum JSON RPC API 공식 문서에 따라 curl 명령어 답안이 포함되어 있음
+>```
+># 네트워크 ID 확인
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth_syncing", "params": [], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 결과 : 동기화하지 않은 상태임을 나타냄
+>{ "jsonrpc": "2.0", "id": 1, "result": false }
+>
+># 노드 상태 조회 (최근 블록 번호)
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 결과 : 16진수로 표기된 latest block 번호를 수신함
+>{ "jsonrpc": "2.0", "id": 1, "result": "0x8ed7ac" }
+>
+># 노드 상태 조회 (피어수)
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "net_peerCount", "params": [], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 결과 : 노드가 연결한 피어의 수가 16진수로 반환됨
+>{ "jsonrpc": "2.0", "id": 1, "result": "0x64" }
+>
+># 노드 상태 조회 (listening 상태)
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "net_listening", "params": [], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 결과 : listening 이 활성화되어 block 을 수신할 수 있는 상태임을 의미함
+>{ "jsonrpc": "2.0", "id": 1, "result": true }
+>
+># 블록 조회
+>## 조회할 블록 번호 : 9361332
+>## 요청을 위해 16진수로 변환한 파라미터가 필요
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth.getBlockByNumber", "params": ["0x8ed7b4", true], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>## 두 번쨰 flag 는 조회할 블록에 포함된 트랜잭션 목록까지 조회를 할지 여부임
+>
+># 트랜잭션 조회
+>## 조회할 트랜잭션 번호 : 0xa1aff823cdff25ea042feb606ebe46ca53de135c0903e7a9e758a5d33682b221
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth_getTransactionByHash", "params": ["0xa1aff823cdff25ea042feb606ebe46ca53de135c0903e7a9e758a5d33682b221"], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 응답
+>### 수신한 트랜잭션의 input : "0x68656c6c6f207373616679"
+>### geth console 을 통해 확인
+>> web3.toAscii("0x68656c6c6f207373616679")
+>"hello ssafy"
+>### 이더스캔에서 조회
+>https://ropsten.etherscan.io/tx/0xa1aff823cdff25ea042feb606ebe46ca53de135c0903e7a9e758a5d33682b221
+>```
+>- 문제4 : 노드 서비스를 통해 트랜잭션 보내기
+>>- 설명
+>>>- Invoke-WebRequest(Powershell) 혹은 curl(명령프롬프트) 명령어를 사용하여 진행함
+>>>- geth console 이 필요하다면 함께 사용함
+>>>>1. Infura 에서 제공받은 엔트포인트로 트랜잭션을 보냄
+>>>>>- Infura 노드를 통해 트랜잭션을 보내기 위해 사용할 수 있는 API 는 어떤 것이 있는지 생각해보고 과제를 수행함
+>>>>>- 보낼 주소, 받는 주소를 준비하여 잔액을 확인하고 트랜잭션의 내용으로 이더와 메시지를 전송함
+>- 문제 해결
+>>- 노드 서비스를 통해 트랜잭션을 보내야 하므로 앞선 문제를 응용하여 raw transaction 을 우선 생성함
+>>- sendRawTransaction 을 curl 로 요청하기 위한 JSON RPC API 형식을 확인함
+>```
+># Raw Transaction 생성
+>## 문제2 에서 수행했던 것처럼 raw transaction 을 생성함
+>
+># 트랜잭션 전송
+>## 요청
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth_sendRawTransaction", "params": ["RAW_TRANSACTION_HEX_STRING"], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>
+>## 결과
+>{ "jsonrpc": "2.0", "id": 1, "result": "TRANSACTION_HASH" }
+>
+>## 트랜잭션 조회를 통한 결과 확인 : eth.getTransaction, eth.getTransactionReceipt 를 통해 가능함
+>> curl -X POST \
+>-d '{"jsonrpc": "2.0", "method": "eth_getTransaction", "params": ["TRANSACTION_HASH"], "id": 1}' \
+>-H "Content-Type: application/json" \
+>"https://ropsten.infura.io/v3/PROJECT_ID"
+>```
+>- 문제5 : 네트워크 사용 방법의 장단점 비교하기
+>>- 설명
+>>>- 노드를 직접 구동하는 방법과 노드 서비스를 이용하는 방법의 차이와 장단점 비교하기
+>- 문제 해결
+>
+>>&nbsp;| 노드를 직접 구동하는 방법 | 노드 서비스를 이용하는 방법
+>>:--|:--|:--
+>>장점|필요한 기능에 맞추어 노드를 구동할 수 있고 노드를 이용할 때 자유도가 높음|별도의 자원이 필요하지 않음
+>>단점|노드를 구동하기 위한 자원이 필요하며 동기화 상태 유지를 위한 비용이 발생함<br>노드를 구동하고 운영하기 위한 사전 지식이 필요함|노드를 공유하므로 제한된 수의 요청만 보낼 수 있음<br>직접 구동하는 방법에 비해 자유도가 낮음
+
+
+<br>
+
+[목차로이동](#목차)
+
+---
+
+## 스마트 컨트랙트 (SmartContract)
+
+>### SmartContract 란?
+>- 
+
+<br>
+
+[목차로이동](#목차)
+
+
+>### SmartContract 환경설정
+>- 
+
+<br>
+
+[목차로이동](#목차)
+
+>### SmartContract 배포
+>- 
+
+<br>
+
+[목차로이동](#목차)
+
+>### SmartContract 호출
+>- 
+
+<br>
+
+[목차로이동](#목차)
+
+>### SmartContract 실습
+>- 
+
+<br>
+
+[목차로이동](#목차)
+
+---
 
