@@ -70,6 +70,10 @@
 >>- [값 타입과 불변 객체](#값-타입과-불변-객체)
 >>- [값 타입 컬렉션](#값-타입-컬렉션)
 >>- [값 타입 정리](#값-타입-정리)
+>- [객체지향 쿼리 언어](#객체지향-쿼리-언어)
+>>- [객체지향 쿼리 언어 개요](#객체지향-쿼리-언어-개요)
+>>- [객체지향 쿼리 소개](#객체지향-쿼리-소개)
+>>- [JPQL](#jpql)
 
 <br>
 
@@ -3917,4 +3921,192 @@ public class Member {
 [목차로 이동](#목차)
 
 >### 객체지향 쿼리 소개
->- 
+>- 개요
+>>- EntityManager.find() 메서드를 사용하면 식별자로 엔티티 하나를 조회할 수 있고 객체 그래프 탐색을 사용하여 연관된 엔티티들을 찾을 수 있으나 이 기능만으로 애플리케이션을 개발하기엔 어려움
+>>>- 나이가 30 이상인 회원을 모두 검색하혀면 좀 더 현실적이고 복잡한 검색 방벙이 필요함
+>>>- 모든 회원 엔티티를 메모리에 올려두고 애플리케이션에서 검색하는 것은 현실성이 없음
+>>>- 결국 SQL로 필요한 내용을 조회해야 함
+>>>- ORM 을 사용하면 DB 테이블이 아닌 엔티티 객체를 대상으로 개발하므로 검색도 테이블이 아닌 엔티티 객체를 대상으로 하는 방법이 필요함
+>>- JPQL 의 특징
+>>>- 테이블이 아닌 객체를 대상으로 검색하는 객체지향 쿼리
+>>>- SQL을 추상화해서 특정 DB SQL 에 의존하지 않음
+>>>- JPQL 을 사용하면 JPA 는 JPQL 을 분석한 다음 적절한 SQL을 만들어 DB를 조회하고 결과로 엔티티 객체를 생성해서 반환함
+>>>- 한마디로 정의하면 객체지향 SQL
+>>- JPA 의 검색 방법
+>>>- JPQL (Java Persistence Query Language)
+>>>- Criteria 쿼리
+>>>>- JPQL 을 편하게 작성하도록 도와주는 API, 빌더 클래스 모음
+>>>- 네이티브 SQL
+>>>>- JPA 에서 JPQL 대신 직접 SQL을 사용할 수 있음
+>>- JPA 가 공식적으로 지원하지 않지만 도움되는 기능
+>>>- QueryDSL
+>>>>- Criteria 쿼리처럼 JPQL 을 편하게 작성하도록 도와주는 빌더 클래스 모음, 비표준 오픈소스 프레임워크
+>>>- JDBC 직접사용, MyBatis 같은 SQL 매퍼 프레임워크 사용
+>>>>- 필요하면 JDBC 를 직접 사용할 수 있음
+>- JPQL 소개
+>>- 엔티티 객체를 조회하는 객체지향 쿼리
+>>>- SQL을 추상화해서 특정 DB에 의존하지 않고 DB Dialect 만 변경하면 JPQL 을 수정하지 않아도 자연스럽게 DB를 변경할 수 있음
+>>- SQL 보다 간결함
+>>>- 엔티티 직접 조회, 묵시적 조인, 다형성 지원으로 SQL 보다 코드가 간결함
+>>- 사용 예시
+>>>```java
+>>>// 회원 엔티티
+>>>@Entity(name="Member")
+>>>public class Member {
+>>>  @Column(name="name")
+>>>  private String username;
+>>>  ...
+>>>}
+>>>
+>>>// JPQL 사용
+>>>String jpql = "select m from Member as m where m.username = 'kim'";
+>>>List<Member> resultList = em.createQuery(jpql, Member.class).getResultList();
+>>>
+>>>// 실제 실행되는 SQL
+>>>select
+>>>  member.id as id,
+>>>  member.age as age,
+>>>  member.team_id as team,
+>>>  member.name as name,
+>>>from
+>>>  Member member
+>>>where
+>>>  member.name='kim'
+>>>```
+>- Criteria 쿼리 소개
+>>- JPQL 을 생성하는 빌더 클래스
+>>>- JPQL 은 오타가 있어도 컴파일은 성공하고 애플리케이션을 서버에 배포할 수 있지만 해당 쿼리가 실행되는 런타임 시점에 오류가 발생하는 치명적 단점이 있음
+>>>- 문자가 아닌 query.select(m).where(...) 처럼 프로그래밍 코드로 JPQL 을 작성하므로써 생기는 장점
+>>>>- 컴파일 시점에 오류 발견
+>>>>- IDE 를 사용하면 코드 자동완성 지원
+>>>>- 동적 쿼리를 작성하기 편함
+>>- 사용 예시
+>>```java
+>>// Criteria 사용 준비
+>>CriteriaBuilder cb = em.getCriteriaBuilder();
+>>CriteriaQuery<Member> query = cb.createQuery(Member.class);
+>>
+>>// 루트 클래스 (조회를 시작할 클래스)
+>>Root<Member> m = query.from(Member.class);
+>>
+>>// 쿼리 생성
+>>CriteriaQuery<Member> cq = query.select(m).where(cb.equal(m.get("username"), "kim"));
+>>List<Member> resultList = em.createQuery(cq).getReulstList();
+>>```
+>>- Criteria 가 가진 장점이 많지만 모든 장점을 상쇄할 정도로 복잡하고 장화하므로 사용하기 불편한 건 물론이고 Criteria 로 작성한 코드도 한눈에 들어오지 않는 단점이 있음
+>- QueryDSL 소개
+>>- Criteria 처럼 JPQL 빌더 클래스
+>>>- 코드 기반이면서 단순하고 사용하기 쉬우며 작성한 코드도 JPQL 과 비슷해서 한눈에 들어옴
+>>- 사용 예시
+>>```java
+>>// 준비
+>>JPAQuery query = new JPAQuery(em);
+>>QMember member = QMember.member;
+>>
+>>// 쿼리, 결과조회
+>>List<Member> members = query.from(member).where(member.username.eq("kim")).list(member);
+>>```
+>>>- QueryDSL 도 어노테이션 프로세서를 사용해서 쿼리 전용 클래스를 만들어야 함
+>>>>- QMember 는 Member 엔티티 클래스를 기반으로 생성한 QueryDSL 쿼리 전용 클래스임
+>- 네이티브 SQL 소개
+>>- SQL 을 직접 사용할 수 있는 기능
+>>>- 특정 DB 에 의존하는 기능을 사용해야 할 때 사용함
+>>- 사용 예시
+>>```java
+>>String sql = "SELECT ID, AGE, TEAM_ID, NAME FROM MEMBER WHERE NAME = 'kim'";
+>>List<Member> resultList = em.createNativeQuery(sql, Member.class).getResultList();
+>>```
+>- JDBC 직접 사용, 마이바티스 같은 SQL 매퍼 프레임워크 사용
+>>- JDBC 커넥션에 직접 접근하고 싶으면 JPA 구현체가 제공하는 방법을 사용해야 함
+>>```java
+>>Session session = entityManager.unwrap(Session.class);
+>>session.doWork(new Work() {
+>>  @Override
+>>  public void execute(Connection connection) throws SQLException {
+>>    // work...
+>>  }
+>>});
+>>```
+>>- JDBC 나 마이바티스를 JPA 와 함께 사용하면 영속성 컨텍스트를 적절한 시점에 강제로 플러시 해야함
+>>>- JPA 를 우회해서 DB 에 접근하는 SQL 에 대해서 JPA 는 전혀 인식하지 못하기 때문에 최악의 경우 영속성 컨텍스트와 DB 를 불일치 상태로 만들어 데이터 무결성을 훼손할 수 있음
+>>- JPA 를 우회해서 SQL 을 실행하기 직전에 영속성 컨텍스트를 수동으로 플러시해서 DB와 영속성 컨텍스트를 동기화해야 함
+
+<br>
+
+[목차로 이동](#목차)
+
+>### JPQL
+>- 개요
+>>- JPQL 은 객체지향 쿼리 언어이므로 엔티티 객체를 대상으로 쿼리함
+>>- JPQL 은 SQL 을 추상화해서 특정 DB SQL 에 의존하지 않음
+>>- JPQL 은 결국 SQL 로 변환됨
+>- 기본 문법과 쿼리 API
+>>- SELECT 문
+>>>- SELECT m FROM Member AS m WHERE m.username = 'Hello'
+>>>>- 엔티티와 속성은 대소문자를 구분하는 반면에 JPQL 키워드는 대소문자를 구분하지 않음
+>>>>- Member 는 클래스 명이 아니라 엔티티 명임
+>>>>- Member AS m 처럼 별칭을 필수로 사용해야하며 별칭 없이 작성하면 오류가 발생함
+>>>>- AS 는 생략할 수 있으므로 Member m 처럼 작성해도 됨
+>>- TypeQuery, Query
+>>>- 작성한 JPQL 을 실행하려면 쿼리 객체를 만들어야 함
+>>>- 쿼리 객체는 TypeQuery 와 Query 가 있으며 반환 타입이 명확하면 TypeQuery 를 사용함
+>>>- TypeQuery 사용 예시
+>>>```java
+>>>TypedQuery<Member> query = em.createQuery("SELECT m FROM Member m", Member.class);
+>>>
+>>>List<Member> resultList = query.getResultList();
+>>>for (Member member : resultList) {
+>>>  System.out.println("member = " + member);
+>>>}
+>>>```
+>>>>- em.createQuery() 의 두 번째 파라미터에 반환할 타입을 지정하면 TypeQuery 를 반환하고 지정하지 않으면 Query 를 반환함
+>>>- Query 사용 예시
+>>>```java
+>>>Query query = em.createQuery("SELECT m.username, m.age from Member m");
+>>>List resultLisat = query.getresultList();
+>>>
+>>>for (Object o : resultList) {
+>>>  Object[] result = (Object[]) o;
+>>>  System.out.println("username = " + result[0]);
+>>>  System.out.println("age = " + result[1]);
+>>>}
+>>>```
+>>>>- SELECT 절에서 여러 엔티티나 컬럼을 선택할 때는 반환할 타입이 명확하지 않으므로 Query 객체를 사용해야 함
+>>>>- Query 객체는 조회 대상이 둘 이상이면 Object[] 를 반환하고, 하나면 Object를 반환함
+>>- 결과 조회
+>>>- query.getResultList()
+>>>>- 결과를 예제로 반환하며 결과가 없으면 빈 컬렉션을 반환함
+>>>- query.getSingleResult()
+>>>>- 결과가 정확히 하나일 때 사용함
+>>>>- 결과가 하나가 아니라면 예외가 발생함
+>- 파라미터 바인딩
+>>- JDBC 는 위치 기준 파라미터 바인딩만 지원하지만 JPQL 은 이름 기준 파라미터 바인딩도 지원함
+>>- 이름 기준 파라미터 사용 예시
+>>```java
+>>String usernameParam = "User1";
+>>
+>>TypedQuery<Member> query = em.createQuery("SELECT m FROM Member m WHERE m.username = :username", Member.class);
+>>
+>>query.setParameter("username", usernameParam);
+>>List<Member> resultList = query.getResultList();
+>>
+>>// 메서드 체이닝 방식으로 작성
+>>List<Member> members = em.createQuery("SELECT m FROM Member m WHERE m.username = :username", Member.class)
+>>  .setParameter("username", usernameParam)
+>>  .getResultList();
+>>```
+>>>- 이름 기준 파라미터는 앞에 : 을 사용함
+>>- 위치 기준 파라미터 사용 예시
+>>```java
+>>List<Member> members = em.createQuery("SELECT m FROM Member m WHERE m.username = ?1", Member.class)
+>>  .setParameter(1, usernameParam)
+>>  .getResultList();
+>>```
+>>- 중요한 주의사항
+>>>- 파라미터 바인딩 방식을 사용하지 않고 "select m from Member m where m.username = '" + usernameParam + "'" 처럼 직접 JPQL 을 만들면 위험하며 비효율적임
+>>>- 악의적인 사용자에 의해 SQL 인젝션 공격을 당할 수 있음
+>>>- 파라미터 바인딩 방식을 사용하면 파라미터의 값이 달라도 같은 쿼리로 인식해서 JPA 는 JPQL 을 SQL 로 파싱한 결과를 재사용할 수 있음
+>>>- DB 도 내부에서 실행한 SQL 을 파싱해서 사용하는데 같은 쿼리는 파싱한 결과를 재사용할 수 있음
+>>>- 결과적으로 애플리케이션과 DB 모두 해당 쿼리의 파싱 결과를 재사용할 수 있어 전체 성능이 향상되므로 파라미터 바인딩 방식은 선택이 아닌 필수임
+>- 프로젝션
+>>- 
